@@ -1,0 +1,26 @@
+{
+    "jk_chip": [
+        "nRF52840_xxAA",
+        "nRF52832_xxAA",
+        "nRF52832_xxAB",
+        "STM32XX"
+    ],
+    "jk_interface": [
+        "SWD"
+    ],
+    "jk_speed": "4000",
+    "hw_sel": "1",
+    "filter": [
+        "",
+        "",
+        "",
+        "",
+        ""
+    ],
+    "font": [
+        "Consolas",
+        "Calibri"
+    ],
+    "font_size": "12",
+    "tx_line": "\n"
+}

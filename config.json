@@ -2,8 +2,7 @@
     "jk_chip": [
         "nRF52840_xxAA",
         "nRF52832_xxAA",
-        "nRF52832_xxAB",
-        "STM32XX"
+        "nRF52832_xxAB"
     ],
     "jk_interface": [
         "SWD"
@@ -11,12 +10,20 @@
     "jk_speed": "4000",
     "hw_sel": "1",
     "filter": [
-        "",
+        "nihao",
         "",
         "",
         "",
         ""
     ],
+    "filter_en": [
+        true,
+        false,
+        false,
+        false,
+        false
+    ],
+    "jk_con_reset": "1",
     "font": [
         "Consolas",
         "Calibri"

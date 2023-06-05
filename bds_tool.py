@@ -6,7 +6,9 @@ import time
 import re
 from bds.hw_base import find_key
 import datetime
+import os
 import bds.bds_jlink as bds_jk
+import multiprocessing
 import bds.bds_serial as bds_ser
 import bds.bds_waveform as wv
 
@@ -14,7 +16,6 @@ global window
 global hw_obj
 global log_remain_str
 global real_time_save_file_name
-
 
 thread_lock = threading.Lock()
 
@@ -105,15 +106,15 @@ def hw_interface_config_dialog(js_cfg):
 def filter_config_dialog(js_cfg):
     # 过滤配置
     filter_layout = [[sg.T('过滤1'), sg.In(js_cfg['filter'][0], key='fileter1', size=(48, 1)),
-                      sg.Checkbox('', default=False, key='fileter1_en')],
+                      sg.Checkbox('', default=js_cfg['filter_en'][0], key='fileter1_en')],
                      [sg.T('过滤2'), sg.In(js_cfg['filter'][1], key='fileter2', size=(48, 1)),
-                      sg.Checkbox('', default=False, key='fileter2_en')],
+                      sg.Checkbox('', default=js_cfg['filter_en'][1], key='fileter2_en')],
                      [sg.T('过滤3'), sg.In(js_cfg['filter'][2], key='fileter3', size=(48, 1)),
-                      sg.Checkbox('', default=False, key='fileter3_en')],
+                      sg.Checkbox('', default=js_cfg['filter_en'][2], key='fileter3_en')],
                      [sg.T('过滤4'), sg.In(js_cfg['filter'][3], key='fileter4', size=(48, 1)),
-                      sg.Checkbox('', default=False, key='fileter4_en')],
+                      sg.Checkbox('', default=js_cfg['filter_en'][3], key='fileter4_en')],
                      [sg.T('过滤5'), sg.In(js_cfg['filter'][4], key='fileter5', size=(48, 1)),
-                      sg.Checkbox('', default=False, key='fileter5_en')],
+                      sg.Checkbox('', default=js_cfg['filter_en'][4], key='fileter5_en')],
                      ]
 
     dialog_layout = [[sg.Frame('过滤配置', filter_layout)],
@@ -159,35 +160,47 @@ def delete_str(pat, s, reverse=False, s_sub=''):
     :param s_sub: 如果reverse=False，这个参数没有意义。如果reverse=True，参考reverse
 
     :return: 返回删除后的字符串
-
-    example：
-
-    s = 'SN(666)SN(555)TABTEST\nSN(123)SN(456)TABTEST\nSN(666)SN(555)TABTEST\nSN(123)SN(555)TABTEST\n123'
-
-    delete_str('SN.+\n', s)
-
-    结果: '123'
-
-    delete_str('SN.+\n',s,reverse=True,s_sub='123')
-
-    结果: 'SN(123)SN(456)TABTEST\nSN(123)SN(555)TABTEST\n123'
     """
-    x = 0
-    while True:
-        sub = re.search(pat, s[x:])
-        if sub is not None:
-            x1, x2 = sub.span()
-            if not reverse:
-                s = s.replace(s[x1:x2], '')
-            else:
-                if s[x1 + x:x2 + x].find(s_sub) < 0:
-                    s = s.replace(s[x1 + x:x2 + x], '')
-                else:
-                    x += x2
-        else:
-            break
-
+    matches = re.findall(pat, s)
+    if reverse:
+        matches = [match for match in matches if s_sub in match]
+    for match in matches:
+        s = s.replace(match, '')
     return s
+
+
+def remove_lines(patterns, text):
+    """
+    删除包含模式列表中的字符串的行
+
+    :param patterns: 要匹配的模式列表
+    :param text: 要处理的文本
+
+    :return: 返回删除包含模式的行后的文本
+    """
+    lines = text.split('\n')
+    filtered_lines = []
+    for line in lines:
+        if not any(pattern in line for pattern in patterns):
+            filtered_lines.append(line)
+    return '\n'.join(filtered_lines)
+
+
+def log_fileter(log_data, filter_pat, remain_str=''):
+    raw_s = remain_str + ''.join(log_data)
+    log_lines = raw_s.split('\n')
+    filtered_lines = []
+
+    last_index = len(log_lines) - 1
+    for idx, line in enumerate(log_lines):
+        if line or (idx == last_index and not line.endswith('\n')):
+            filtered_line = remove_lines(filter_pat, line + '\n')
+            filtered_lines.append(filtered_line)
+
+    new_s = ''.join(filtered_lines)
+    updated_remain_str = log_lines[last_index] if not log_lines[last_index].endswith('\n') else ''
+
+    return new_s, updated_remain_str
 
 
 def db_data_check_error(s):
@@ -203,98 +216,70 @@ def db_data_check_error(s):
     return False
 
 
-def log_filter(win, s):
-    return s
+def log_print_line(win, s, auto_scroll=True):
+    sv = ''
+    color = 0
+    pre_color = -1
+    line_tag = re.findall('.+\n', s)
+    for idx, v in enumerate(line_tag):
+        v_idx = v.find('BDSCOL(')
+        if v_idx < 0:
+            if pre_color >= 0:
+                sg.cprint(sv, text_color='#%06X' % pre_color, end='', autoscroll=auto_scroll)
+                sv = ''
+                pre_color = -1
+            sv += v
+            color = -1
+        else:
+            if sv != '' and color == -1:
+                # 按照默认色打印
+                sg.cprint(sv, text_color='#%06X' % 0, end='', autoscroll=auto_scroll)
+                sv = ''
+            try:
+                color = int(find_key(v, 'BDSCOL'))
+            except Exception as e:
+                win[DB_OUT].write('[BDS LOG]RAW string:%s,color error:%s,error code:%s\n' % (s, v, e))
+                log.info('RAW string:%s,color error:%s,error code:%s\n' % (s, v, e))
+                color = 0
+            if pre_color < 0:
+                pre_color = color
+            if color == pre_color:
+                sv += delete_str('BDSCOL\([0-9]{1,8}\)', v)
+            else:
+                # 输出上一个颜色的字符串
+                sg.cprint(sv, text_color='#%06X' % pre_color, end='', autoscroll=auto_scroll)
+                sv = delete_str('BDSCOL\([0-9]{1,8}\)', v)
+            pre_color = color
+    if color < 0:
+        color = 0
+    if sv != '':
+        sg.cprint(sv, text_color='#%06X' % color, end='', autoscroll=auto_scroll)
 
 
-def log_data_display(win, obj, auto_scroll=True, color=True):
+def log_process(win, obj, js_cfg, auto_scroll=True):
     global log_remain_str
 
-    log_data = []
-    obj.read_data_queue(log_data)
+    filter_pat = [value for value, flag in zip(js_cfg['filter'], js_cfg['filter_en']) if flag]
 
-    raw_s = ''
-    s = log_remain_str
-    log_remain_str = ''
-    for v in log_data:
-        s += v
-        raw_s += v
+    # read log data
+    raw_log = []
+    obj.read_data_queue(raw_log)
+    # filter log
+    new_log, log_remain_str = log_fileter(raw_log, filter_pat, log_remain_str)
 
-    log_split = s.split('\n')
-    data_len = len(log_split)
-    s1 = ''
-    for idx, v in enumerate(log_split):
-        if data_len > 1:
-            if v != '':
-                if idx != data_len - 1:
-                    v += '\n'
-                    v = log_filter(win, v)
-                    s1 += v
-                else:
-                    # 最后一个要么是空，要么是没有换行符的字符串，此时都连接到rtt_data_str
-                    log_remain_str = v
-            else:
-                # 如果中间存在连续多个换行符，就存在连续多个空字符串，因此，除最后一个以外都要附带换行
-                if idx != data_len - 1:
-                    v += '\n'
-        else:
-            log_remain_str = v
-
-    # 数据错误检查
-    if not db_data_check_error(s1):
-        # a = time.time()
-        if color:
-            sv = ''
-            color = 0
-            pre_color = -1
-            line_tag = re.findall('.+\n', s1)
-            for idx, v in enumerate(line_tag):
-                v_idx = v.find('BDSCOL(')
-                if v_idx < 0:
-                    if pre_color >= 0:
-                        sg.cprint(sv, text_color='#%06X' % pre_color, end='', autoscroll=auto_scroll)
-                        sv = ''
-                        pre_color = -1
-                    sv += v
-                    color = -1
-                else:
-                    if sv != '' and color == -1:
-                        # 按照默认色打印
-                        sg.cprint(sv, text_color='#%06X' % 0, end='', autoscroll=auto_scroll)
-                        sv = ''
-                    try:
-                        color = int(find_key(v, 'BDSCOL'))
-                    except Exception as e:
-                        win[DB_OUT].write('[BDS LOG]RAW string:%s,color error:%s,error code:%s\n' % (raw_s, v, e))
-                        log.info('RAW string:%s,color error:%s,error code:%s\n' % (raw_s, v, e))
-                        color = 0
-                    if pre_color < 0:
-                        pre_color = color
-                    if color == pre_color:
-                        sv += delete_str('BDSCOL\([0-9]{1,8}\)', v)
-                    else:
-                        # 输出上一个颜色的字符串
-                        sg.cprint(sv, text_color='#%06X' % pre_color, end='', autoscroll=auto_scroll)
-                        sv = delete_str('BDSCOL\([0-9]{1,8}\)', v)
-                    pre_color = color
-            if color < 0:
-                color = 0
-            if sv != '':
-                sg.cprint(sv, text_color='#%06X' % color, end='', autoscroll=auto_scroll)
-        else:
-            win[DB_OUT].write(s1)
-        # b = time.time()
-        # delta = '%03d' % ((b - a) * 1000)
-        # print(delta)
+    if not db_data_check_error(new_log):
+        # print log to GUI
+        log_print_line(win, new_log, auto_scroll)
+        # save log to file
         if win['real_time_save_data'].get_text() == '关闭实时保存数据':
             try:
                 with open(real_time_save_file_name, 'a', encoding='utf-8') as f:
-                    f.write(raw_s)
+                    f.write(new_log)
             except Exception as e:
                 log.info('Write real time data to file error[%s]\n' % e)
     else:
-        win[DB_OUT].write("RTT数据出错，可能需要重启设备！ + " + "error data:[" + s1[0:20] + "]\n")
-        log.info("RTT数据出错，可能需要重启设备！ + " + "error data:[" + s1[0:20] + "]\n")
+        win[DB_OUT].write("RTT数据出错，可能需要重启设备！ + " + "error data:[" + new_log[0:20] + "]\n")
+        log.info("RTT数据出错，可能需要重启设备！ + " + "error data:[" + new_log[0:20] + "]\n")
 
 
 def jk_connect(win, obj, jk_cfg):
@@ -309,6 +294,7 @@ def jk_connect(win, obj, jk_cfg):
             if obj.hw_is_open():
                 win['connect'].update('J_Link断开', button_color=('grey0', 'green4'))
                 win[DB_OUT].write('[J_Link LOG]sn:%d\n' % obj.get_hw_serial_number())
+                win[DB_OUT].write('[J_Link LOG]过滤配置:%s\n' % ','.join(jk_cfg['filter']))
                 if jk_con_reset:
                     win[DB_OUT].write('[J_Link LOG]J_Link复位MCU.\n')
                 log.info('J_Link连接成功')
@@ -329,6 +315,8 @@ def jk_connect(win, obj, jk_cfg):
 
 
 def main():
+    multiprocessing.freeze_support()
+
     log.basicConfig(filename='alg-tool.log', filemode='w', level=log.INFO, format='%(asctime)s %(message)s',
                     datefmt='%Y/%m/%d %I:%M:%S')
 
@@ -344,7 +332,11 @@ def main():
                 ['关于']
                 ]
 
+    tx_data_type = ['ASC', 'HEX']
     right_click_menu = ['', ['清除窗口数据', '滚动到最底端']]
+
+    tx_data_layout = [[sg.Button('发送数据', key='tx_data', pad=((5, 5), (5, 15)), size=(8, 1))],
+                      [sg.Combo(tx_data_type, tx_data_type[0], readonly=True, key='tx_data_type', size=(8, 1))]]
 
     layout = [[sg.Menu(menu_def, )],
               [sg.Button('J_Link连接', key='connect', size=(10, 1), font=font, button_color=('grey0', 'grey100')),
@@ -353,8 +345,16 @@ def main():
                          key='real_time_save_data'),
                sg.Button('保存全部数据', font=font, button_color=('grey0', 'grey100'), key='save_all_data'),
                sg.Button('一键跳转', font=font, button_color=('grey0', 'grey100'), key='skip_to_file')],
-              [sg.Multiline(autoscroll=True, key=DB_OUT, size=(100, 26), right_click_menu=right_click_menu,
-                            font=(font + font_size + ' bold'))]
+              [sg.Multiline(autoscroll=True, key=DB_OUT, size=(100, 25), right_click_menu=right_click_menu,
+                            font=(font + font_size + ' bold'))],
+
+              [sg.Frame('', tx_data_layout), sg.Multiline('', font=(font + font_size + ' bold'),
+                                                          key='data_input', size=(88, 4)),
+               ],
+
+              [sg.T('历史数据'), sg.Combo(js_cfg['user_input_data'], js_cfg['user_input_data'][0], pad=((35, 5), (1, 1)),
+                                          readonly=True, key='history_data', size=(115, 1), enable_events=True)
+               ]
               ]
 
     global window
@@ -367,6 +367,8 @@ def main():
 
     jk_obj = bds_jk.BDS_Jlink(hw_error)
     hw_obj = jk_obj
+    ser_obj = jk_obj
+
     threading.Thread(target=hw_rx_thread, daemon=True).start()
 
     mul_scroll = False
@@ -408,18 +410,50 @@ def main():
                 thread_lock.acquire()
                 hw_obj = jk_obj
                 thread_lock.release()
+                '''
+                if hw_obj == ser_obj:
+                    window['open_timestamp'].update('打开时间戳', button_color=('grey0', 'grey100'))
+                    hw_obj.close_timestamp()
+                '''
                 jk_connect(window, hw_obj, js_cfg)
             elif window['connect'].get_text().find('串口') >= 0:
                 pass
-            elif event == 'real_time_save_data':
-                if window['real_time_save_data'].get_text() == '实时保存数据':
-                    window['real_time_save_data'].update('关闭实时保存数据', button_color=('grey0', 'green4'))
-                    real_time_save_file_name = 'aaa_log\\' + 'real_time_log_' + datetime.datetime.now().strftime(
-                        '%Y-%m-%d-%H-%M-%S') + '.txt'
-                else:
-                    window['real_time_save_data'].update('实时保存数据', button_color=('grey0', 'grey100'))
+        elif event == 'real_time_save_data':
+            if window['real_time_save_data'].get_text() == '实时保存数据':
+                window['real_time_save_data'].update('关闭实时保存数据', button_color=('grey0', 'green4'))
+                real_time_save_file_name = 'aaa_log\\' + 'real_time_log_' + datetime.datetime.now().strftime(
+                    '%Y-%m-%d-%H-%M-%S') + '.txt'
+            else:
+                window['real_time_save_data'].update('实时保存数据', button_color=('grey0', 'grey100'))
+        elif event == 'open_timestamp':
+            if window['open_timestamp'].get_text() == '打开时间戳':
+                hw_obj.open_timestamp()
+                window['open_timestamp'].update('关闭时间戳', button_color=('grey0', 'green4'))
+            else:
+                hw_obj.close_timestamp()
+                window['open_timestamp'].update('打开时间戳', button_color=('grey0', 'grey100'))
+        elif event == 'save_all_data':
+            if window[DB_OUT].get() != '':
+                file_name = 'aaa_log\\' + 'log_' + datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S') + '.txt'
+                with open(file_name, 'w', encoding='utf-8') as f:
+                    f.write(window[DB_OUT].get())
+                    os.startfile(file_name)
+                    window[DB_OUT].update('')
+            else:
+                sg.popup('[Error]无数据!!!')
+        elif event == ' 滚动到最底端 ':
+            mul_scroll = True
+            window[DB_OUT].update(autoscroll=True)
+        elif event == '清除窗口数据':
+            window[DB_OUT].update('')
+        elif event == 'tx_data':
+            print(window['data_input'].get())
+            window['history_data'].update(window['data_input'].get(),
+                                          values=[window['data_input'].get()])
+        elif event == 'history_data':
+            window['data_input'].write(values['history_data'])
 
-        log_data_display(window, hw_obj, auto_scroll=mul_scroll)
+        log_process(window, hw_obj, js_cfg, auto_scroll=mul_scroll)
 
     window.close()
 

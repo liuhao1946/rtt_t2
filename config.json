@@ -10,14 +10,14 @@
     "jk_speed": "4000",
     "hw_sel": "1",
     "filter": [
-        "nihao",
+        "test",
         "",
         "",
         "",
         ""
     ],
     "filter_en": [
-        true,
+        false,
         false,
         false,
         false,
@@ -29,5 +29,8 @@
         "Calibri"
     ],
     "font_size": "12",
-    "tx_line": "\n"
+    "tx_line": "\n",
+    "user_input_data": [
+        ""
+    ]
 }

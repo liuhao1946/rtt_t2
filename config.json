@@ -1,6 +1,8 @@
 {
     "jk_chip": [
         "nRF52840_xxAA",
+        "stm32f103c8",
+        "stm32f103zet6",
         "nRF52832_xxAA",
         "nRF52832_xxAB"
     ],
@@ -9,20 +11,8 @@
     ],
     "jk_speed": "4000",
     "hw_sel": "1",
-    "filter": [
-        "test",
-        "",
-        "",
-        "",
-        ""
-    ],
-    "filter_en": [
-        false,
-        false,
-        false,
-        false,
-        false
-    ],
+    "filter": "[BDS]TAG=BLE_IN",
+    "filter_en": false,
     "jk_con_reset": "1",
     "font": [
         "Consolas",
@@ -32,5 +22,25 @@
     "tx_line": "\n",
     "user_input_data": [
         ""
-    ]
+    ],
+    "y_range": [
+        -100,
+        100
+    ],
+    "curves_name": [
+        "X",
+        "Y",
+        "Z"
+    ],
+    "y_label_text": "",
+    "y_label_name": "",
+    "ser_baud": [
+        941176,
+        1152000,
+        115200,
+        9600,
+        19200
+    ],
+    "ser_com": "COM5",
+    "ser_des": "Silicon Labs CP210x USB to UART Bridge (COM5)"
 }

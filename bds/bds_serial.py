@@ -1,10 +1,11 @@
 import serial
-from  serial.tools import list_ports_windows
+from serial.tools import list_ports_windows
 from .bds_utils import *
 from queue import Queue
-#import re
+# import re
 from bds.hw_base import HardWareBase
-#from datetime import datetime
+# from datetime import datetime
+
 
 def serial_find():
     """
@@ -19,12 +20,13 @@ def serial_find():
         com_des_list.append(com_information[i].description)
         com_name_list.append(com_information[i].name)
 
-    return [com_des_list,com_name_list]
+    return [com_des_list, com_name_list]
+
 
 class BDS_Serial(HardWareBase):
-    def __init__(self,err_cb,warn_cb, com_name = '', baud = 115200,rx_timeout = 0,
-                 read_size=10240, tag_detect_timeout_s = 6.0,read_rtt_data_interval_s = 0.002, **kwargs):
-        super().__init__(err_cb, warn_cb,tag_detect_timeout_s,read_rtt_data_interval_s, **kwargs)
+    def __init__(self, err_cb, warn_cb, com_name='', baud=115200, rx_timeout=0,
+                 read_size=10240, tag_detect_timeout_s=6.0, read_rtt_data_interval_s=0.002, **kwargs):
+        super().__init__(err_cb, warn_cb, tag_detect_timeout_s, read_rtt_data_interval_s, **kwargs)
         self.ser = serial.Serial()
         self.com_name = com_name
         self.baudrate = baud
@@ -33,9 +35,9 @@ class BDS_Serial(HardWareBase):
         self.ser_is_start = False
         self.ser_data_queue = Queue()
 
-    def hw_open(self,port = '', baud = 115200, rx_buffer_size = 10240):
+    def hw_open(self, port='', baud=115200, rx_buffer_size=10240):
         try:
-            #print(port,baud)
+            # print(port,baud)
             self.hw_para_init()
             self.ser.port = port
             self.ser.baudrate = baud
@@ -44,7 +46,7 @@ class BDS_Serial(HardWareBase):
             self.ser.reset_input_buffer()
             self.ser_is_start = True
         except Exception as e:
-            self.err_cb('%s\n'%e)
+            self.err_cb('%s\n' % e)
             print(e)
 
     def hw_close(self):
@@ -72,6 +74,7 @@ class BDS_Serial(HardWareBase):
                     self.err_cb('Serial:%s\n' % e)
         except Exception as e:
             self.err_cb('Serial:%s\n' % e)
+
 
 if __name__ == '__main__':
     pass

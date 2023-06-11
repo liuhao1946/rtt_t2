@@ -7,59 +7,36 @@ from datetime import datetime
 thread_lock = threading.Lock()
 
 
-def find_key(s, key):
-    """
-    找到关键字对应的值
-
-    :param s: 原始字符串
-    :param key: 要找到的关键字
-    :return: 没有找到，返回''，找到返回字符串值
-    """
-    key += '\([0-9]+\)'
-    sub = re.search(key, s)
-    if sub != None:
-        x1, x2 = sub.span()
-        s_data = re.sub('.+\(', '', sub.string[x1:x2], flags=re.S)
-        s_data = re.sub('\)', '', s_data)
-
-        return s_data
-    else:
-        return ''
+def find_key(text, key):
+    pattern = fr"{key}\((\d+)\)"
+    match = re.search(pattern, text)
+    if match:
+        sn_value = int(match.group(1))
+        return sn_value
+    return None
 
 
-def find_DT(s, key):
-    """
-    找到DF包含的字符串系数、字符串值
-
-    :param s: 原始字符串
-    :return: 如果找到，返回一个浮点型数值列表
-    """
-    sub1 = re.search('[^A-Za-z0-9]' + key + '\*{0,1}[0-9]*\(.*?\)', s)
-    if sub1 is not None:
-        x1, x2 = sub1.span()
-        s_data = re.sub('.+\(', '', sub1.string[x1:x2])
-        data = re.sub('\)', '', s_data).split(',')
-
-        s_coe = '0'
-        sub2 = re.search('[1-9]{1,2}\(', sub1.string[x1:x2])
-        if sub2 is not None:
-            x1, x2 = sub2.span()
-            s_coe = re.sub('\(', '', sub2.string[x1:x2])
-
-        return [float(v) / (10.0 ** int(s_coe)) for v in data]
-    else:
-        return []
+def find_group(text, key):
+    pattern = fr"{key}\*(\d+)\((-?\d+\.?\d*),(-?\d+\.?\d*),(-?\d+\.?\d*)\)"
+    match = re.search(pattern, text)
+    if match:
+        n = int(match.group(1))
+        x = float(match.group(2)) if n != 0 else int(match.group(2))
+        y = float(match.group(3)) if n != 0 else int(match.group(3))
+        z = float(match.group(4)) if n != 0 else int(match.group(4))
+        return [x, y, z]
+    return []
 
 
 class HardWareBase:
-    def __init__(self, err_cb, tag_detect_timeout_s, read_rtt_data_interval_s, **kwargs):
+    def __init__(self, err_cb, warn_cb, tag_detect_timeout_s, read_rtt_data_interval_s, **kwargs):
         self.err_cb = err_cb
-
+        self.warn_cb = warn_cb
         self.raw_data_save = False
-
         self.timestamp_open = False
         self.rx_str = ''
         self.data_queue = Queue()
+        self.M_cb = []
         self.thread_run_interval_s = read_rtt_data_interval_s
         self.tag_detect_timeout = self.tag_detect_timeout_init = tag_detect_timeout_s / self.thread_run_interval_s
 
@@ -79,15 +56,14 @@ class HardWareBase:
                 t = '[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[0:-3] + '] '
                 s1 = s1.replace('\n', '\n' + t)
             self.data_queue.put(s1)
-            # print(int(s1[0], 16))
 
         s_total_len = len(self.rx_str)
         if s_total_len > 10:
             # print(s_total_len)
-            tag_dlog = re.findall(r'TAG=DLOG2 .+\n{0,1}\|{0,1}.{0,3}[\n\|]', self.rx_str)
+            tag_dlog = re.findall(r"(TAG=DLOG2.+?\n)", self.rx_str)
 
             for v in tag_dlog:
-                self._dlog_pack_handle(v)
+                self.dlog_pack_handle(v)
 
             if tag_dlog:
                 tag_start_idx = 0
@@ -117,8 +93,21 @@ class HardWareBase:
     def get_raw_data_state(self):
         return self.raw_data_save
 
-    def _dlog_pack_handle(self, str_sub):
-        pass
+    def reg_dlog_M_callback(self, cb):
+        self.M_cb.append(cb)
+
+    def dlog_pack_handle(self, sub):
+        try:
+            thread_lock.acquire()
+            raw_data = find_group(sub, 'M')
+
+            if len(raw_data):
+                for _, cb in enumerate(self.M_cb):
+                    cb({'x': raw_data[0], 'y': raw_data[1], 'z': raw_data[2]})
+        except Exception as e:
+            self.warn_cb('re data error:[%s]\n' % e)
+        finally:
+            thread_lock.release()
 
     def get_hw_serial_number(self):
         pass

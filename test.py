@@ -1,23 +1,24 @@
-import PySimpleGUI as sg
+import pylink
 
-# 定义布局
-layout = [
-    [sg.Column([
-        [sg.Text('Combo', size=(10, 1)), sg.Combo(['Option 1', 'Option 2'], size=(10, 1))],
-        [sg.Text('Button', size=(10, 1)), sg.Button('Click', size=(10, 1))]
-    ])],
-    [sg.Multiline(size=(20, 5))],
-    [sg.Button('Exit')]
-]
 
-# 创建窗口
-window = sg.Window('GUI Layout', layout)
+if __name__ == '__main__':
+    serial_no = '59768896'
+    jk = pylink.JLink()
 
-# 事件循环
-while True:
-    event, values = window.read()
-    if event == sg.WINDOW_CLOSED or event == 'Exit':
-        break
+    # Open a connection to your J-Link.
+    jk.open()
 
-# 关闭窗口
-window.close()
+    try:
+        # nrf52840xxaa
+        # stm32f103c8
+        jk.connect('stm32f103c8', verbose=True)
+    except Exception as e:
+        print(e)
+
+    if jk.connected():
+        print('@@jk is connect...')
+    else:
+        print('jk open fail..')
+
+    jk.close()
+    print('jk_close')

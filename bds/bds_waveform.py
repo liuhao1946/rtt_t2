@@ -6,6 +6,7 @@ from multiprocessing import Process, Queue, Value
 import numpy as np
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import math
+from functools import partial
 
 global wave_data_q, wave_run_flag, wave_cmd_q, wave_obj, wave_pause_flag
 
@@ -98,14 +99,12 @@ class waveform:
         self.wave_front = self.vb.menu.addAction(MENU_GO_BACK_WAVE_FRONT[0])
         self.wave_front.triggered.connect(self.go_back_wave_front)
 
-        self.wave_is_display = [True, True, True]
+        self.wave_is_display = [True for _ in self.axis_name]
         self.menu_hide_curve = self.vb.menu.addMenu(MENU_HIDE_TEXT[0])
         self.menu_hide_action = []
-        # 按照名称顺序对应
-        self.self_menu_hide_cb = [self.wave_hide1, self.wave_hide2,self.wave_hide3]
-        for index,v in enumerate(self.axis_name):
+        for index, v in enumerate(self.axis_name):
             self.menu_hide_action.append(self.menu_hide_curve.addAction(MENU_HIDE_TEXT[1] + ' ' + v))
-            self.menu_hide_action[index].triggered.connect(self.self_menu_hide_cb[index])
+            self.menu_hide_action[index].triggered.connect(partial(self.wave_hide, v))
 
         # 这里要修改GrahicsScene.py
         self.plot.scene().sigMousePress.connect(self.mouse_press)
@@ -150,6 +149,15 @@ class waveform:
             # RGBA
             self.curve[index].setPen('#00000000', width=1)
 
+    def wave_hide(self, curver_name):
+        index = self.axis_name.index(curver_name)
+        if self.menu_hide_action[index].text().startswith(MENU_HIDE_TEXT[1]):
+            self.menu_hide_action[index].setText(MENU_HIDE_TEXT[2] + ' ' + self.axis_name[index])
+            self.set_wave_display(index, display=False)
+        else:
+            self.set_wave_display(index)
+            self.menu_hide_action[index].setText(MENU_HIDE_TEXT[1] + ' ' + self.axis_name[index])
+
     def sta_inf_update_time_set_ms(self, ms):
         # self.sta_inf_update_time_s = ms / 10
         pass
@@ -175,34 +183,10 @@ class waveform:
         self.x_range_x5.setText('5s')
         self.x_range_x2.setText('☑ 2s')
 
-    def wave_hide1(self, state):
-        if self.menu_hide_action[0].text().startswith(MENU_HIDE_TEXT[1]):
-            self.menu_hide_action[0].setText(MENU_HIDE_TEXT[2] + ' ' + self.axis_name[0])
-            self.set_wave_display(0, display=False)
-        else:
-            self.set_wave_display(0)
-            self.menu_hide_action[0].setText(MENU_HIDE_TEXT[1] + ' ' + self.axis_name[0])
-
-    def wave_hide2(self, state):
-        if self.menu_hide_action[1].text().startswith(MENU_HIDE_TEXT[1]):
-            self.set_wave_display(1, display=False)
-            self.menu_hide_action[1].setText(MENU_HIDE_TEXT[2] + ' ' + self.axis_name[1])
-        else:
-            self.set_wave_display(1)
-            self.menu_hide_action[1].setText(MENU_HIDE_TEXT[1] + ' ' + self.axis_name[1])
-
-    def wave_hide3(self, state):
-        if self.menu_hide_action[2].text().startswith(MENU_HIDE_TEXT[1]):
-            self.set_wave_display(2, display=False)
-            self.menu_hide_action[2].setText(MENU_HIDE_TEXT[2] + ' ' + self.axis_name[2])
-        else:
-            self.set_wave_display(2)
-            self.menu_hide_action[2].setText(MENU_HIDE_TEXT[1] + ' ' + self.axis_name[2])
-
     def mouse_press(self, ev):
         if ev.button() == QtCore.Qt.MouseButton.LeftButton:
             pos = ev.scenePos()
-            if self.vb.sceneBoundingRect().contains(pos) and self.right_but_is_press == False:
+            if self.vb.sceneBoundingRect().contains(pos) and not self.right_but_is_press:
                 # self.mouse_press_x = self.vb.mapToView(QtCore.QPointF(pos.x(), 0)).x()
                 self.mouse_press_x = pos.x()
                 if self.menu_region.text() == MENU_REGION_TEXT[1]:
@@ -293,7 +277,11 @@ class waveform:
                 for _ in range(q_size):
                     data = self.data_q.get()
                     index = 0
-                    for key, v in data.items():
+                    data_len = len(data)
+                    axis_len = len(self.axis_name)
+                    if data_len > axis_len:
+                        data = data[:-(data_len-axis_len)]
+                    for _, v in enumerate(data):
                         self.y_data[self.axis_name[index]].append(v)
                         index += 1
 
@@ -419,13 +407,10 @@ class waveform:
         计算区域中的统计信息
         :return 统计信息对应的字符串信息
         """
-        curve_count = self.wave_is_display.count(True)
         x1, x2 = self.region_to_list_index_map()
 
         delta_t = abs(self.x_time_s[x1]-self.x_time_s[x2])
         str_inf = '△T:%0.6f s\n' % delta_t
-
-        # print(curve_count,self.wave_is_display)
 
         for index in range(len(self.axis_name)):
             if self.wave_is_display[index]:

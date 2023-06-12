@@ -101,9 +101,9 @@ class HardWareBase:
             thread_lock.acquire()
             raw_data = find_group(sub, 'M')
 
-            if len(raw_data):
+            if len(raw_data) > 0:
                 for _, cb in enumerate(self.M_cb):
-                    cb({'x': raw_data[0], 'y': raw_data[1], 'z': raw_data[2]})
+                    cb([v for v in raw_data])
         except Exception as e:
             self.warn_cb('re data error:[%s]\n' % e)
         finally:

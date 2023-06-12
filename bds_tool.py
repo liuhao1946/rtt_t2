@@ -103,17 +103,14 @@ def hw_config_dialog(js_cfg):
 
     # 波形配置
     wave_layout = [[sg.T('y轴下边界'),
-                    sg.In('-100', key='y_min', pad=((10, 1), (1, 1)), size=(10, 1)),
-                    sg.T('y轴上边界', pad=((22, 1), (1, 1))),
-                    sg.In('100', key='y_max', size=(10, 1)),
-                    sg.T('y轴标签名称', pad=((22, 1), (1, 1))),
-                    sg.In('', key='y_label_name', pad=((10, 1), (1, 1)), size=(10, 1))],
-                   [sg.T('红色曲线名称'),
-                    sg.In('X', key='curves_x', size=(10, 1)),
-                    sg.T('绿色曲线名称'),
-                    sg.In('Y', key='curves_y', size=(10, 1)),
-                    sg.T('蓝色曲线名称'),
-                    sg.In('Z', key='curves_z', size=(10, 1))],
+                    sg.In(js_cfg['y_range'][0], key='y_min', pad=((10, 1), (1, 1)), size=(10, 1)),
+                    sg.T('y轴上边界', pad=((10, 1), (1, 1))),
+                    sg.In(js_cfg['y_range'][1], key='y_max', size=(10, 1))],
+                   [sg.T('y轴名称', pad=((5, 1), (1, 1))),
+                    sg.In(js_cfg['y_label_text'], key='y_label_text', pad=((25, 1), (1, 1)), size=(10, 1)),
+                    sg.T('曲线名称', pad=((12, 1), (1, 1))),
+                    sg.In(js_cfg['curves_name'], key='curves_name', pad=((10, 1), (5, 5)), size=(50, 1)),
+                    ]
                    ]
 
     dialog_layout = [[sg.Frame('接口选择', interface_layout)],
@@ -143,10 +140,8 @@ def hw_config_dialog(js_cfg):
             try:
                 js_cfg['y_range'][0] = int(cfg_window['y_min'].get())
                 js_cfg['y_range'][1] = int(cfg_window['y_max'].get())
-                js_cfg['y_label_name'] = cfg_window['y_label_name'].get()
-                js_cfg['curves_name'][0] = cfg_window['curves_x'].get()
-                js_cfg['curves_name'][1] = cfg_window['curves_y'].get()
-                js_cfg['curves_name'][2] = cfg_window['curves_z'].get()
+                js_cfg['y_label_text'] = cfg_window['y_label_text'].get()
+                js_cfg['curves_name'] = cfg_window['curves_name'].get()
 
                 baud = int(cfg_window['baud_list'].get())
                 # 删除重复baud
@@ -623,8 +618,12 @@ def main():
                 sg.popup_no_wait('请先断开硬件连接！')
         elif event == 'wave':
             if hw_obj.hw_is_open():
-                wv.wave_cmd('wave reset')
-                wv.startup_wave(js_cfg['y_range'], js_cfg['y_label_text'], js_cfg['curves_name'])
+                if len(js_cfg['curves_name']) > 0:
+                    wv.wave_cmd('wave reset')
+                    wv.startup_wave(js_cfg['y_range'], js_cfg['y_label_text'],
+                                    [v for v in js_cfg['curves_name'].split('&&') if v != ''])
+                else:
+                    sg.popup_no_wait('没有设置任何轴名称，请至少设置一个轴名称')
             else:
                 sg.popup_no_wait('请先连接硬件')
 

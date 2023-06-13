@@ -67,9 +67,13 @@ class BDS_Serial(HardWareBase):
         try:
             if self.ser_is_start:
                 bytes_data = self.ser.read_all()
+                print(bytes_data)
                 try:
-                    raw_ser_data_str = ''.join(map(lambda x: chr(x), bytes_data))
-                    self.hw_data_handle(raw_ser_data_str)
+                    decoded_str = bytes_data.decode('utf-8', errors='ignore')
+                    # TODO: 对unicode的解码需要考虑字节的合并，否则不能正确解码造成掉数据
+                    # raw_ser_data_str = ''.join(map(lambda x: chr(x), bytes_data))
+                    self.hw_data_handle(decoded_str)
+                    print(decoded_str)
                 except Exception as e:
                     self.err_cb('Serial:%s\n' % e)
         except Exception as e:

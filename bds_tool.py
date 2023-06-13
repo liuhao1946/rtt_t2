@@ -250,6 +250,9 @@ def log_fileter(log_data, filter_pat, remain_str=''):
 
 
 def db_data_check_error(s):
+
+    return False
+
     err_cnt = 0
     err_chr = chr(0)
     for v in s:
@@ -383,11 +386,11 @@ def ser_connect(win, obj, jk_cfg):
             obj.hw_close()
             log.info('串口打开失败' + str(e))
             win[DB_OUT].write('[Serial LOG]Error:%s\n' % e)
-            win['connect'].update('打开串口', button_color=('grey0', 'grey100'))
+            win['connect'].update('串口连接', button_color=('grey0', 'grey100'))
     else:
         obj.hw_close()
         win[DB_OUT].write('[Serial LOG]串口关闭！\n')
-        win['connect'].update('打开串口', button_color=('grey0', 'grey100'))
+        win['connect'].update('串口连接', button_color=('grey0', 'grey100'))
         log.info('串口关闭！')
         time.sleep(0.1)
 
@@ -425,11 +428,6 @@ def main():
                     sg.Checkbox('', default=False, key='filter_en', enable_events=True),
                     ]
                    ]
-
-    sec2_layout = [[sg.Button('配置', button_color=('grey0', 'grey100'), key='config', size=(9, 1)),
-                    sg.Button('波形绘制', button_color=('grey0', 'grey100'), key='wave', size=(9, 1))],
-                   ]
-
     tx_data_type = ['ASC', 'HEX']
     right_click_menu = ['', ['清除窗口数据', '滚动到最底端']]
 
@@ -464,6 +462,7 @@ def main():
     global real_time_save_file_name
     global log_remain_str
 
+    # sg.theme('DarkBlue11')
     window = sg.Window('v1.0.0', layout, finalize=True, resizable=True)
     window.set_min_size(window.size)
     window[DB_OUT].expand(True, True, True)

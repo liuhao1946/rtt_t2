@@ -21,8 +21,8 @@ MENU_HIDE_TEXT = ['显示波形', '☑', '□']
 
 def find_nearest(array, value):
     idx = np.searchsorted(array, value, side="left")
-    if idx > 0 and (idx == len(array) or math.fabs(value - array[idx-1]) < math.fabs(value - array[idx])):
-        return idx-1
+    if idx > 0 and (idx == len(array) or math.fabs(value - array[idx - 1]) < math.fabs(value - array[idx])):
+        return idx - 1
     else:
         return idx
 
@@ -280,7 +280,7 @@ class waveform:
                     data_len = len(data)
                     axis_len = len(self.axis_name)
                     if data_len > axis_len:
-                        data = data[:-(data_len-axis_len)]
+                        data = data[:-(data_len - axis_len)]
                     for _, v in enumerate(data):
                         self.y_data[self.axis_name[index]].append(v)
                         index += 1
@@ -297,7 +297,7 @@ class waveform:
                         self.curve_max_point += q_size
 
                     # print(self.curve_max_point)
-                    start_idx = self.curve_max_point-self.visible_area_max_point
+                    start_idx = self.curve_max_point - self.visible_area_max_point
                     end_idx = self.curve_max_point
                     for index, c in enumerate(self.curve):
                         c.setData(x=self.x_time_s[start_idx:end_idx],
@@ -344,7 +344,7 @@ class waveform:
                 self.mouse_press_x = self.mouse_move_x
                 # TODO:缩放系数最好根据点的时间间隔来确定。点越密集，移动点数应该越多才对
                 if self.mean_dt != 0:
-                    move_point_count = int((40.0 / (self.mean_dt*1000)) * distance)
+                    move_point_count = int((40.0 / (self.mean_dt * 1000)) * distance)
                 else:
                     move_point_count = int(distance)
                 self.curve_max_point -= move_point_count
@@ -409,12 +409,12 @@ class waveform:
         """
         x1, x2 = self.region_to_list_index_map()
 
-        delta_t = abs(self.x_time_s[x1]-self.x_time_s[x2])
+        delta_t = abs(self.x_time_s[x1] - self.x_time_s[x2])
         str_inf = '△T:%0.6f s\n' % delta_t
 
         for index in range(len(self.axis_name)):
             if self.wave_is_display[index]:
-                y_data = self.y_data[self.axis_name[index]][x1:x2+1]
+                y_data = self.y_data[self.axis_name[index]][x1:x2 + 1]
                 y_max = np.max(y_data)
                 y_min = np.min(y_data)
                 y_mean = np.mean(y_data)
@@ -527,7 +527,13 @@ def wave_run(run_flag, pause_flag, data_q, cmd_q, cfg):
 
     plot = win.addPlot()
 
-    pen_color = [(255, 0, 0), (0, 255, 0), (0, 0, 255)]
+    pen_color = [(255, 0, 0),           # 红
+                 (0, 255, 0),           # 绿
+                 (0, 0, 255),           # 蓝
+                 (128, 0, 128),         # 紫
+                 (255, 255, 0),         # 黄
+                 (255, 255, 255),       # 白
+                 ]
     wave_obj = waveform(pause_flag, data_q, cmd_q, plot, pen_color, cfg['axis_name'], cfg['y_range'],
                         y_text=cfg['y_text'], y_unit='', label_xy=label_xy, label_odr=label_odr)
 
@@ -558,4 +564,3 @@ def startup_wave(y_range, y_text, axis_name):
 
 if __name__ == '__main__':
     pass
-

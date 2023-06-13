@@ -64,7 +64,7 @@ class BDS_Jlink(HardWareBase):
         try:
             if self.rtt_is_start:
                 rtt_data = self.jlink.rtt_read(self.buffer_idx, self.read_size)
-                rtt_data_str = ''.join([chr(v) for v in rtt_data])
+                rtt_data_str = bytes(rtt_data).decode('utf-8', errors='ignore')
                 self.hw_data_handle(rtt_data_str)
         except Exception as e:
             self.err_cb('J_Link:%s\n' % e)

@@ -11,6 +11,7 @@ import bds.bds_jlink as bds_jk
 import multiprocessing
 import bds.bds_serial as bds_ser
 import bds.bds_waveform as wv
+import sys
 
 global window
 global hw_obj
@@ -21,12 +22,15 @@ thread_lock = threading.Lock()
 
 DB_OUT = 'db_out' + sg.WRITE_ONLY_KEY
 
+sg.theme('DarkBlue11')
 
 # 黑：000000
 # 红：FF3030
 # 蓝：00008B
 # 绿：008B00
 # 紫：9932CC
+
+
 def hw_rx_thread():
     while True:
         try:
@@ -113,12 +117,26 @@ def hw_config_dialog(js_cfg):
                     ]
                    ]
 
+    # 字符编码
+    c_format = js_cfg['char_format']
+    c_utf_8 = False
+    c_asc = False
+    if c_format == 'utf-8':
+        c_utf_8 = True
+    else:
+        c_asc = True
+
+    char_format_layout = [[sg.Checkbox('utf-8', default=c_utf_8, key='utf_8', enable_events=True),
+                           sg.Checkbox('asc', default=c_asc, key='asc', enable_events=True)],
+                          ]
+
     dialog_layout = [[sg.Frame('接口选择', interface_layout)],
                      [sg.Frame('J_Link配置', jk_layout)],
                      [sg.Frame('串口配置', ser_layout)],
                      [sg.Frame('波形图配置', wave_layout)],
-                     [sg.Button('保存', key='save', pad=((250, 5), (10, 10)), size=(8, 1)),
-                      sg.Button('取消', key='clean', pad=((20, 5), (10, 10)), size=(8, 1))]
+                     [sg.Frame('字符编码格式', char_format_layout)],
+                     [sg.Button('保存', key='save', pad=((430, 5), (10, 10)), size=(8, 1)),
+                      sg.Button('取消', key='clean', pad=((30, 5), (10, 10)), size=(8, 1))]
                      ]
 
     cfg_window = sg.Window('硬件接口配置', dialog_layout, modal=True)
@@ -126,6 +144,7 @@ def hw_config_dialog(js_cfg):
     ser_lost_detect_interval = 0
     while True:
         d_event, d_values = cfg_window.read(timeout=100)
+        print(d_event)
 
         ser_lost_detect_interval += 1
         if ser_lost_detect_interval >= 10:
@@ -153,6 +172,11 @@ def hw_config_dialog(js_cfg):
                 js_cfg['ser_des'] = cfg_window['com_des_list'].get()
                 js_cfg['ser_com'] = com_name_list[com_des_list.index(cfg_window['com_des_list'].get())]
 
+                if cfg_window['asc'].get():
+                    c_format = 'asc'
+                elif cfg_window['utf_8'].get():
+                    c_format = 'utf-8'
+                js_cfg['char_format'] = c_format
                 if chip_name in js_cfg['jk_chip']:
                     js_cfg['jk_chip'].remove(chip_name)
                 js_cfg['jk_chip'].insert(0, chip_name)
@@ -170,6 +194,12 @@ def hw_config_dialog(js_cfg):
             cfg_window['jk_radio'].update(False)
             cfg_window['ser_radio'].update(True)
             js_cfg['hw_sel'] = '2'
+        elif d_event == 'utf_8':
+            cfg_window['asc'].update(False)
+            cfg_window['utf_8'].update(True)
+        elif d_event == 'asc':
+            cfg_window['asc'].update(True)
+            cfg_window['utf_8'].update(False)
 
     cfg_window.close()
 
@@ -250,9 +280,6 @@ def log_fileter(log_data, filter_pat, remain_str=''):
 
 
 def db_data_check_error(s):
-
-    return False
-
     err_cnt = 0
     err_chr = chr(0)
     for v in s:
@@ -317,8 +344,8 @@ def log_process(win, obj, js_cfg, auto_scroll=True):
     obj.read_data_queue(raw_log)
     # filter log
     new_log, log_remain_str = log_fileter(raw_log, filter_pat, log_remain_str)
-
-    if not db_data_check_error(new_log):
+    # Check only asc characters
+    if js_cfg['char_format'] != 'asc' or not db_data_check_error(new_log):
         # print log to GUI
         log_print_line(win, new_log, auto_scroll)
         # save log to file
@@ -470,9 +497,8 @@ def main():
     window['history_data'].expand(True, False, False)
 
     update_connect_button_text(window, js_cfg['hw_sel'])
-
-    jk_obj = bds_jk.BDS_Jlink(hw_error, hw_warn)
-    ser_obj = bds_ser.BDS_Serial(hw_error, hw_warn)
+    jk_obj = bds_jk.BDS_Jlink(hw_error, hw_warn, char_format=js_cfg['char_format'])
+    ser_obj = bds_ser.BDS_Serial(hw_error, hw_warn, char_format=js_cfg['char_format'])
 
     hw_obj = jk_obj
 
@@ -490,7 +516,6 @@ def main():
 
     while True:
         event, values = window.read(timeout=150)
-        # print(event)
 
         if event == sg.WIN_CLOSED:
             hw_obj.hw_close()
@@ -613,6 +638,7 @@ def main():
             if not hw_obj.hw_is_open():
                 hw_config_dialog(js_cfg)
                 update_connect_button_text(window, js_cfg['hw_sel'])
+                hw_obj.hw_set_char_format(js_cfg['char_format'])
             else:
                 sg.popup_no_wait('请先断开硬件连接！')
         elif event == 'wave':
@@ -625,6 +651,11 @@ def main():
                     sg.popup_no_wait('没有设置任何轴名称，请至少设置一个轴名称')
             else:
                 sg.popup_no_wait('请先连接硬件')
+        elif event == 'skip_to_file':
+            try:
+                os.startfile(os.path.dirname(os.path.realpath(sys.argv[0])) + '\\aaa_log')
+            except Exception as e:
+                sg.popup_no_wait("%s" % e)
 
         log_process(window, hw_obj, js_cfg, auto_scroll=mul_scroll)
 

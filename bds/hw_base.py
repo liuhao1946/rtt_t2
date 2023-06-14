@@ -29,12 +29,13 @@ def find_group(text, key):
 
 
 class HardWareBase:
-    def __init__(self, err_cb, warn_cb, tag_detect_timeout_s, read_rtt_data_interval_s, **kwargs):
+    def __init__(self, err_cb, warn_cb, tag_detect_timeout_s, read_rtt_data_interval_s, char_format, **kwargs):
         self.err_cb = err_cb
         self.warn_cb = warn_cb
         self.raw_data_save = False
         self.timestamp_open = False
         self.rx_str = ''
+        self.char_format = char_format
         self.data_queue = Queue()
         self.M_cb = []
         self.thread_run_interval_s = read_rtt_data_interval_s
@@ -48,6 +49,9 @@ class HardWareBase:
 
     def hw_close(self):
         pass
+
+    def hw_set_char_format(self, c_format):
+        self.char_format = c_format
 
     def hw_data_handle(self, s1):
         self.rx_str += s1

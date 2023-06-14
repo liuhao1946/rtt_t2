@@ -10,8 +10,8 @@
         "SWD"
     ],
     "jk_speed": "4000",
-    "hw_sel": "2",
-    "filter": "\u4f60\u597d",
+    "hw_sel": "1",
+    "filter": "\u3002\u3002\u3002",
     "filter_en": false,
     "jk_con_reset": "1",
     "font": [
@@ -37,5 +37,6 @@
         19200
     ],
     "ser_com": "COM5",
-    "ser_des": "Silicon Labs CP210x USB to UART Bridge (COM5)"
+    "ser_des": "Silicon Labs CP210x USB to UART Bridge (COM5)",
+    "char_format": "utf-8"
 }

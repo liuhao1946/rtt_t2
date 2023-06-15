@@ -489,7 +489,6 @@ def main():
     global real_time_save_file_name
     global log_remain_str
 
-    # sg.theme('DarkBlue11')
     window = sg.Window('v1.0.0', layout, finalize=True, resizable=True)
     window.set_min_size(window.size)
     window[DB_OUT].expand(True, True, True)

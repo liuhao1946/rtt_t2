@@ -1,3 +1,11 @@
+<!--
+ * @Author: liuhao1946 2401569420@qq.com
+ * @Date: 2023-06-15 22:18:35
+ * @LastEditors: liuhao1946 2401569420@qq.com
+ * @LastEditTime: 2023-06-16 00:48:39
+ * @FilePath: \undefinedc:\Users\LH\Desktop\bds_tool\README.md
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+-->
 
 # 简介
 
@@ -45,7 +53,7 @@ bds_tool是一个免费、易用的多功能调试工具，它将很好的替代
 > Note:
 > 1. 使用RTT时，需要安装官方的[J_Link](https://www.segger.com/downloads/jlink/)组件。否则会因为bds_tool无法调用J_Link的静态库而无法使用。
 > 2. 对于工具不支持的芯片型号，参考[添加芯片](使用J_Link时，如何添加bds_tool不支持的芯片型号？)
-> 3. **RTT目前只支持0通道，不支持其他通道。**
+> 3. **RTT目前只支持0通道，不支持其他通道**。这意味着你只能调用SEGGER_RTT_printf(0, "test\n")发送数据，而不能调用SEGGER_RTT_printf(1,"test\n")去发送数据。
 
 #### 串口通信
 

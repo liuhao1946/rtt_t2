@@ -12,7 +12,7 @@
 
 * pyserial，串口模块，p版本3.5。
 
-* pyqtgraph，绘图模块，版本0.12.4。
+* pyqtgraph，绘图模块，版本0.12.4。要注意，pyqtgraph依赖了pyQt，不同版本的pyqtgraph需要对应不同的pyQt。他们之间的对应关系可以去该仓库在github的官网中找到。
 
 ## 软件库中的修改
 

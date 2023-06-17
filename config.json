@@ -9,11 +9,11 @@
     "jk_interface": [
         "SWD"
     ],
+    "jk_con_reset": false,
     "jk_speed": "4000",
-    "hw_sel": "1",
-    "filter": "\u3002\u3002\u3002",
+    "hw_sel": "2",
+    "filter": "",
     "filter_en": false,
-    "jk_con_reset": "1",
     "font": [
         "Consolas",
         "Calibri"
@@ -21,7 +21,13 @@
     "font_size": "12",
     "tx_line": "\n",
     "user_input_data": [
-        ""
+        "",
+        "sensor inf",
+        "device inf",
+        "device inf\nsensor inf",
+        "01 02 03 04 05",
+        "MAC:",
+        "01 02 03"
     ],
     "curves_name": "X&&Y&&Z",
     "y_range": [
@@ -30,8 +36,8 @@
     ],
     "y_label_text": "m/s^2",
     "ser_baud": [
-        115200,
         941176,
+        115200,
         1152000,
         9600,
         19200

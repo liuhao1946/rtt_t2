@@ -63,8 +63,7 @@ class HardWareBase:
 
         s_total_len = len(self.rx_str)
         if s_total_len > 10:
-            # print(s_total_len)
-            tag_dlog = re.findall(r"(TAG=DLOG2.+?\n)", self.rx_str)
+            tag_dlog = re.findall(r"(TAG=DLOG.+?\n)", self.rx_str)
 
             for v in tag_dlog:
                 self.dlog_pack_handle(v)
@@ -73,7 +72,7 @@ class HardWareBase:
                 tag_start_idx = 0
                 # 找到最后一个完整tag，完整的tag与tag之间的内容全部删除
                 for idx, v in enumerate(tag_dlog):
-                    tag_idx = self.rx_str.find('TAG=DLOG2 ', tag_start_idx)
+                    tag_idx = self.rx_str.find('TAG=DLOG', tag_start_idx)
                     tag_start_idx = tag_idx + len(v)
                 if tag_start_idx < s_total_len:
                     self.rx_str = self.rx_str[tag_start_idx:]
@@ -105,9 +104,10 @@ class HardWareBase:
             thread_lock.acquire()
             raw_data = find_group(sub, 'M')
 
-            if len(raw_data) > 0:
+            if len(raw_data) >= 3:
                 for _, cb in enumerate(self.M_cb):
-                    cb([v for v in raw_data])
+                    # print(raw_data, len(self.M_cb))
+                    cb(raw_data)
         except Exception as e:
             self.warn_cb('re data error:[%s]\n' % e)
         finally:

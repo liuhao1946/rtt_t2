@@ -281,6 +281,8 @@ class waveform:
                     axis_len = len(self.axis_name)
                     if data_len > axis_len:
                         data = data[:-(data_len - axis_len)]
+
+                    # print(data)
                     for _, v in enumerate(data):
                         self.y_data[self.axis_name[index]].append(v)
                         index += 1
@@ -478,10 +480,10 @@ class waveform:
             self.curve_move_pause = False
 
 
-def wave_data(*args):
+def wave_data(data):
     if wave_pause_flag.value:
         # args[0] = {'x': x,'y':y,'z':z}
-        wave_data_q.put(args[0])
+        wave_data_q.put(data)
 
 
 def wave_cmd(cmd):

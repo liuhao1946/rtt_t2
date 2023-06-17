@@ -1,0 +1,7 @@
+*.log
+build/
+dist/
+*.txt
+*.rar
+*.zip
+*.csv

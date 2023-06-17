@@ -27,11 +27,10 @@ RTT_T2是一个免费、易用的多功能调试工具，它将很好的替代�
 
 * 鼠标点击**软件数据显示区，鼠标右键一键将数据区滚动条拉到最低端**。
 
+[软件演示](https://gitee.com/bds123/bds_tool/blob/master/images/1.gif)
+[波形显示器演示](https://gitee.com/bds123/bds_tool/blob/master/images/2.gif)
+
 对于源码感兴趣的朋友需要看一下[源码说明文档](https://gitee.com/bds123/bds_tool/blob/master/docs/source_code.md)。
-
----可能是两个动图，一个log显示，一个波形显示器
-
-
 
 ---
 ## 使用指南

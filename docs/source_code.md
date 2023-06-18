@@ -5,6 +5,9 @@
 ## 编译器
 * 编译器 - PyCharm 
 
+## python版本
+* v3.9
+
 ## 几个关键软件库
 * PySimpleGUI，GUI模块，版本4.53.0。
 
@@ -77,3 +80,7 @@ def mouseReleaseEvent(self, ev):
                 self.dragButtons.remove(ev.button())
     .......
 ```
+
+## 软件打包
+使用pyinstaller 5.1打包，打包命令：
+>pyinstaller --exclude scipy -wD tool.ico rtt_t2.py

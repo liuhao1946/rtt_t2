@@ -107,8 +107,8 @@ SEGGER_RTT_printf(0, BDS_COLOR_TAG "(%d)%s", BDS_LOG_COLOR_VIOLET, s);
 
 能被rtt_t识别的颜色标签格式必须是: **BDS_COLOR_TAG(xxx)zzz\n**，xxx为颜色值，zzz为你自己的字符串。
 
-#### 配置过滤项目
-1. 打开主界面上的**过滤**选项。
+#### 配置过滤项
+1. 打开主界面上的**过滤设置**选项。
 
 2. 输入你需要过滤的字符串。如果需要过滤多个不同的字符串，不同的字符串间以&&隔开。比如你需要过滤包含TAG=DLOG以及TAG=BDS的行，你的过滤表达式应该这么写:
     > TAG=DLOG&&TAG=BDS

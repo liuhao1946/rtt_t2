@@ -1,6 +1,6 @@
 {
     "jk_chip": [
-        "STM32L412CB",
+		"STM32L412CB",
         "nRF52840_xxAA",
         "stm32f103C8",
         "stm32f103zet6",

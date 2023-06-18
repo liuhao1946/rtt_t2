@@ -23,9 +23,9 @@ RTT_T2是一个免费、易用的多功能调试工具，它将很好的替代�
 
 * 一键保存数据显示区的全部数据。
 
-* 鼠标点击**软件数据显示区，鼠标右键一键清除数据区域的log**。
+* 鼠标点击软件数据显示区，鼠标右键一键清除数据区域的log。
 
-* 鼠标点击**软件数据显示区，鼠标右键一键将数据区滚动条拉到最低端**。
+* 鼠标点击软件数据显示区，鼠标右键一键将数据区滚动条拉到最低端。
 
 ![软件演示](https://gitee.com/bds123/bds_tool/raw/master/images/1.gif)
 ![波形显示器演示](https://gitee.com/bds123/bds_tool/raw/master/images/2.gif)
@@ -81,11 +81,11 @@ RTT_T2是一个免费、易用的多功能调试工具，它将很好的替代�
 ```c
 #define BDS_COLOR_TAG           "BDSCOL"
 
-#define BDS_LOG_COLOR_BLACK     0x000000
-#define BDS_LOG_COLOR_RED       0xFF3030
-#define BDS_LOG_COLOR_GREEN     0x008B00
-#define BDS_LOG_COLOR_BLUE      0x00008B
-#define BDS_LOG_COLOR_VIOLET    0x9932CC
+#define BDS_LOG_COLOR_BLACK     0x000000 //黑色
+#define BDS_LOG_COLOR_RED       0xFF3030 //共色
+#define BDS_LOG_COLOR_GREEN     0x008B00 //绿色
+#define BDS_LOG_COLOR_BLUE      0x00008B //蓝色
+#define BDS_LOG_COLOR_VIOLET    0x9932CC //紫色
 
 char *s = "test\n";
 

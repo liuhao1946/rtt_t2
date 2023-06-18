@@ -12,6 +12,7 @@ import multiprocessing
 import bds.bds_serial as bds_ser
 import bds.bds_waveform as wv
 import sys
+import bds.time_diff as td
 
 global window
 global hw_obj
@@ -518,6 +519,8 @@ def main():
 
     sg.cprint_set_output_destination(window, DB_OUT)
 
+    time_diff = td.TimeDifference()
+
     while True:
         event, values = window.read(timeout=150)
 
@@ -632,7 +635,6 @@ def main():
             if window['filter_en'].get():
                 js_cfg['filter'] = window['filter'].get()
                 js_cfg['filter_en'] = True
-                print(js_cfg['filter'])
             else:
                 js_cfg['filter'] = window['filter'].get()
                 js_cfg['filter_en'] = False
@@ -662,6 +664,7 @@ def main():
                 sg.popup_no_wait("%s" % e)
 
         log_process(window, hw_obj, js_cfg, auto_scroll=mul_scroll)
+        time_diff.print_time_difference()
 
     window.close()
 

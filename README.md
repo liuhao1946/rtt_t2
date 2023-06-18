@@ -209,7 +209,15 @@ SEGGER_RTT_printf(0, BDS_COLOR_TAG "(%d)%s", BDS_LOG_COLOR_VIOLET, s);
 
 ## FAQ
 #### 使用J_Link时，如何添加RTT-T2不支持的芯片型号？
-请参考[RTT-T](https://gitee.com/bds123/RTT-T)仓库的**RTT-T配置**部分。
+1. 在J_Link的官方软件中找到你的目标芯片名称。
+![](https://gitee.com/bds123/bds_tool/raw/master/images/6.jpg)
+
+2. 将芯片名称添加到**应用程序**所在目录下的**config.json**文件。
+![](https://gitee.com/bds123/bds_tool/raw/master/images/4.jpg)
+
+![](https://gitee.com/bds123/bds_tool/raw/master/images/5.jpg)
+
+也可参考[RTT-T](https://gitee.com/bds123/RTT-T)仓库的**RTT-T配置**部分，这里有更详细的描述。
 
 #### 如果你选择的芯片不能被RTT-T2识别怎么办？
 有时候你已经正确的获得了你的芯片在J_Link中的命名，但当你尝试使用RTT-T2去连接芯片时要么不成功，要么无法进行RTT通信，这个时候你可以将芯片选择为**nRF52840xxAA**后在尝试。

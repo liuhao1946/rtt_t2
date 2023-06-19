@@ -36,6 +36,7 @@ RTT_T2是一个免费、易用的多功能调试工具，它将很好的替代�
 ![软件演示](https://gitee.com/bds123/bds_tool/raw/master/images/1.gif)
 ![波形显示器演示](https://gitee.com/bds123/bds_tool/raw/master/images/2.gif)
 
+以下两张是软件的静态图片，这是为看不到动图的朋友准备的。
 ![](https://gitee.com/bds123/bds_tool/raw/master/images/7.jpg)
 ![](https://gitee.com/bds123/bds_tool/raw/master/images/8.jpg)
 

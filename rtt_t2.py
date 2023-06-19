@@ -495,7 +495,7 @@ def main():
     global real_time_save_file_name
     global log_remain_str
 
-    window = sg.Window('v1.0.0', layout, finalize=True, resizable=True, icon=APP_ICON)
+    window = sg.Window('v1.0.1', layout, finalize=True, resizable=True, icon=APP_ICON)
     window.set_min_size(window.size)
     window[DB_OUT].expand(True, True, True)
     window['data_input'].expand(True, True, True)
@@ -556,20 +556,20 @@ def main():
         elif event == 'connect':
             wv.wave_cmd('wave reset')
             if window['connect'].get_text().find('J_Link') >= 0:
-                thread_lock.acquire()
-                hw_obj = jk_obj
-                thread_lock.release()
                 if hw_obj == ser_obj:
                     window['open_timestamp'].update('打开时间戳', button_color=('grey0', 'grey100'))
                     hw_obj.close_timestamp()
+                thread_lock.acquire()
+                hw_obj = jk_obj
+                thread_lock.release()
                 jk_connect(window, hw_obj, js_cfg)
             elif window['connect'].get_text().find('串口') >= 0:
-                thread_lock.acquire()
-                hw_obj = ser_obj
-                thread_lock.release()
                 if hw_obj == jk_obj:
                     window['open_timestamp'].update('打开时间戳', button_color=('grey0', 'grey100'))
                     hw_obj.close_timestamp()
+                thread_lock.acquire()
+                hw_obj = ser_obj
+                thread_lock.release()
                 ser_connect(window, hw_obj, js_cfg)
         elif event == 'real_time_save_data':
             if window['real_time_save_data'].get_text() == '实时保存数据':

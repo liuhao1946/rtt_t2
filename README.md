@@ -57,7 +57,7 @@ RTT_T2是一个免费、易用的多功能调试工具，它将很好的替代�
 
 > Note:
 > 1. 使用RTT时，需要安装官方的[J_Link](https://www.segger.com/downloads/jlink/)组件。否则会因为RTT_T2无法调用J_Link的静态库而无法使用。
-> 2. 对于工具不支持的芯片型号，参考[添加芯片](使用J_Link时，如何添加RTT_T2不支持的芯片型号？)
+> 2. 对于工具不支持的芯片型号，参考**FAQ**。
 > 3. **RTT目前只支持0通道，不支持其他通道**。这意味着你只能调用SEGGER_RTT_printf(0, "test\n")发送数据，而不能调用SEGGER_RTT_printf(1,"test\n")去发送数据。
 
 #### 串口通信
@@ -86,7 +86,7 @@ RTT_T2是一个免费、易用的多功能调试工具，它将很好的替代�
 >2. 如果对中文字符显示有需求，你的数据不要**一直**以超过100Hz(10ms)的频率发送log数据。否则会造成工具无法显示或者及时显示你发过来的log，以**asc**格式发送则没有限制。
 
 #### 发送带有颜色的字体
-发送的数据在rtt_t中显示什么颜色由MCU端决定，以RTT为例，串口类似：
+发送的数据在RTT_T2中显示什么颜色由MCU端决定，以RTT为例，串口类似：
 ```c
 #define BDS_COLOR_TAG           "BDSCOL"
 
@@ -104,7 +104,7 @@ SEGGER_RTT_printf(0, BDS_COLOR_TAG "(%d)%s", BDS_LOG_COLOR_RED, s);
 SEGGER_RTT_printf(0, BDS_COLOR_TAG "(%d)%s", BDS_LOG_COLOR_GREEN, s);
 //黑色
 SEGGER_RTT_printf(0, BDS_COLOR_TAG "(%d)%s", BDS_LOG_COLOR_BLACK, s);
-//黑色。不带BDS_COLOR_TAG标签时，rtt_t按照默认按照黑色显示
+//黑色。不带BDS_COLOR_TAG标签时，RTT_T2按照默认按照黑色显示
 SEGGER_RTT_printf(0,"%s", s);
 //蓝色
 SEGGER_RTT_printf(0, BDS_COLOR_TAG "(%d)%s", BDS_LOG_COLOR_BLUE, s);
@@ -112,9 +112,9 @@ SEGGER_RTT_printf(0, BDS_COLOR_TAG "(%d)%s", BDS_LOG_COLOR_BLUE, s);
 SEGGER_RTT_printf(0, BDS_COLOR_TAG "(%d)%s", BDS_LOG_COLOR_VIOLET, s);
 ```
 
-要注意的是，同一行的log显示的是同一个颜色，不同行中如果采用了不同的RGB色，在rtt_t中显示的颜色是不一样的。另外，由于采用的是RGB色，你可以将你的log以**任何颜色**显示在rtt_t中，而不仅仅限于例子中的几个颜色。
+要注意的是，同一行的log显示的是同一个颜色，不同行中如果采用了不同的RGB色，在RTT_T2中显示的颜色是不一样的。另外，由于采用的是RGB色，你可以将你的log以**任何颜色**显示在RTT_T2中，而不仅仅限于例子中的几个颜色。
 
-能被rtt_t识别的颜色标签格式必须是: **BDS_COLOR_TAG(xxx)zzz\n**，xxx为颜色值，zzz为你自己的字符串。
+能被RTT_T2识别的颜色标签格式必须是: **BDS_COLOR_TAG(xxx)zzz\n**，xxx为颜色值，zzz为你自己的字符串。
 
 #### 配置过滤项
 1. 打开主界面上的**过滤设置**选项。
@@ -126,7 +126,7 @@ SEGGER_RTT_printf(0, BDS_COLOR_TAG "(%d)%s", BDS_LOG_COLOR_VIOLET, s);
     如果需要**过滤多个不同的字符串**，不同的**字符串间需要用&&隔开**。比如你需要过滤包含TAG=DLOG以及TAG=BDS的行，你的过滤表达式应该这么写:
     > TAG=DLOG&&TAG=BDS
 
-    此时，rtt_t将过滤掉所有包含TAG=DLOG以及TAG=BDS的行。
+    此时，RTT_T2将过滤掉所有包含TAG=DLOG以及TAG=BDS的行。
 
 3. 勾选过滤表达式旁边的复选框，过滤生效。
 
@@ -144,7 +144,7 @@ SEGGER_RTT_printf(0, BDS_COLOR_TAG "(%d)%s", BDS_LOG_COLOR_VIOLET, s);
     > 1 2 3 4 AD
 
 #### 波形显示
-波形显示可以用来研究数据的变化，帮助工程师寻找数据的规律以设计自己的算法。要利用这个功能，除了rtt_t提供的波形显示器以外，还需要MCU端配合。
+波形显示可以用来研究数据的变化，帮助工程师寻找数据的规律以设计自己的算法。要利用这个功能，除了RTT_T2提供的波形显示器以外，还需要MCU端配合。
 
 ##### 波形显示器
 
@@ -176,7 +176,7 @@ SEGGER_RTT_printf(0, BDS_COLOR_TAG "(%d)%s", BDS_LOG_COLOR_VIOLET, s);
     > 鼠标右键 → 回到波形最前端
 
 ##### MCU向波形显示器发送数据
-要想波形显示器能正常工作，MCU端向rtt_t发送log时需要满足一定的数据格式。标准的数据格式如下：
+要想波形显示器能正常工作，MCU端向RTT_T2发送log时需要满足一定的数据格式。标准的数据格式如下：
 > TAG=DLOG M*P(x,y,z)\n
 
 上述的字符串中，TAG=DLOG表示log标签，M是关键字，这是不可改的。x、y、z是原始数据转换为整形的结果，P指示了原始数据后的小数点位数。假设原始数据为X、Y、Z，则x、y、z与X、Y、Z以及P的关系如下：
@@ -234,7 +234,7 @@ SEGGER_RTT_printf(0, BDS_COLOR_TAG "(%d)%s", BDS_LOG_COLOR_VIOLET, s);
 ---
 
 ## FAQ
-#### 使用J_Link时，如何添加RTT-T2不支持的芯片型号？
+#### 使用J_Link时，如何添加RTT_T2不支持的芯片型号
 1. 在J_Link的官方软件中找到你的目标芯片名称。
 ![](https://gitee.com/bds123/bds_tool/raw/master/images/6.jpg)
 
@@ -245,11 +245,11 @@ SEGGER_RTT_printf(0, BDS_COLOR_TAG "(%d)%s", BDS_LOG_COLOR_VIOLET, s);
 
 也可参考[RTT-T](https://gitee.com/bds123/RTT-T)仓库的**RTT-T配置**部分，这里有更详细的描述。
 
-#### 如果你选择的芯片不能被RTT-T2识别怎么办？
-有时候你已经正确的获得了你的芯片在J_Link中的命名，但当你尝试使用RTT-T2去连接芯片时要么不成功，要么无法进行RTT通信，这个时候你可以将芯片选择为**nRF52840xxAA**后在尝试。
+#### 如果你选择的芯片不能被RTT_T2识别怎么办？
+有时候你已经正确的获得了你的芯片在J_Link中的命名，但当你尝试使用RTT_T2去连接芯片时要么不成功，要么无法进行RTT通信，这个时候你可以将芯片选择为**nRF52840xxAA**后在尝试。
 
 #### 如何更高效的利用保存全部保存功能？
-由于点击**保存全部数据**按钮完成了两件事，一件将RTT-T2的数据区内的log全部保存到txt文本。另一件是打开这个txt文本。所以如果你将**txt文本的默认打开程序设置为notepad或者vs**，你可以在一个非常强大的编辑器中搜索、编辑log。这也是为什么RTT-T2没有做log检索功能的一个原因。
+由于点击**保存全部数据**按钮完成了两件事，一件将RTT_T2的数据区内的log全部保存到txt文本。另一件是打开这个txt文本。所以如果你将**txt文本的默认打开程序设置为notepad或者vs**，你可以在一个非常强大的编辑器中搜索、编辑log。这也是为什么RTT_T2没有做log检索功能的一个原因。
 
 ---
 

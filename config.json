@@ -22,13 +22,16 @@
     "font_size": "12",
     "tx_line": "\n",
     "user_input_data": [
-        "",
-        "sensor inf",
-        "device inf",
         "device inf\nsensor inf",
         "01 02 03 04 05",
         "MAC:",
-        "01 02 03"
+        "01 02 03",
+        "1 12 13",
+        "01 12 13",
+        "11 12 12\n12",
+        "11 12 1123",
+        "AD",
+        "ad"
     ],
     "curves_name": "X&&Y&&Z",
     "y_range": [

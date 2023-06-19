@@ -611,6 +611,7 @@ def main():
                 window['history_data'].update(input_data, values=js_cfg['user_input_data'])
                 if window['tx_data_type'].get() == 'HEX':
                     try:
+                        print([int(i, 16) for i in input_data.split(' ')])
                         hw_obj.hw_write([int(i, 16) for i in input_data.split(' ')])
                     except:
                         sg.popup_no_wait('数据格式错误。数据类型请选择HEX，数据之间用空格隔开。')

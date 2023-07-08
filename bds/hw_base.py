@@ -1,8 +1,8 @@
 import re
 import threading
-import math
 from queue import Queue
 from datetime import datetime
+import binascii
 
 thread_lock = threading.Lock()
 
@@ -85,6 +85,12 @@ class HardWareBase:
                 self.tag_detect_timeout = self.tag_detect_timeout - 1
             else:
                 self.rx_str = ''
+
+    def hw_data_hex_handle(self, byte_stream):
+        if byte_stream != b'':
+            hex_string = binascii.hexlify(byte_stream).decode()
+            hex_string = ' '.join([hex_string[i:i + 2] for i in range(0, len(hex_string), 2)])
+            self.data_queue.put(' ' + hex_string + '\n')
 
     def hw_write(self, data):
         pass

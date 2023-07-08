@@ -76,7 +76,7 @@ class BDS_Serial(HardWareBase):
                     if self.char_format == 'asc':
                         raw_ser_data_str = ''.join(map(lambda x: chr(x), bytes_data))
                         self.hw_data_handle(raw_ser_data_str)
-                    else:
+                    elif self.char_format == 'utf-8':
                         # utf-8
                         if len(bytes_data) > 0:
                             self.bytes_data += bytes_data
@@ -89,6 +89,8 @@ class BDS_Serial(HardWareBase):
                             decoded_str = decoded_str.replace("\\n", "\n")
                             self.hw_data_handle(decoded_str)
                             self.bytes_data = b''
+                    elif self.char_format == 'hex':
+                        self.hw_data_hex_handle(bytes_data)
                 except Exception as e:
                     self.err_cb('Serial:%s\n' % e)
         except Exception as e:

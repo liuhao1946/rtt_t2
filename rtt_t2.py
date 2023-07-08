@@ -25,6 +25,8 @@ DB_OUT = 'db_out' + sg.WRITE_ONLY_KEY
 
 APP_ICON = b'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'
 
+color_pat = re.compile(r'BDSCOL\((\d{1,8})\)', re.I)
+
 sg.theme('DarkBlue11')
 
 # 黑：000000
@@ -124,13 +126,17 @@ def hw_config_dialog(js_cfg):
     c_format = js_cfg['char_format']
     c_utf_8 = False
     c_asc = False
+    c_hex = False
     if c_format == 'utf-8':
         c_utf_8 = True
-    else:
+    elif c_format == 'asc':
         c_asc = True
+    elif c_format == 'hex':
+        c_hex = True
 
     char_format_layout = [[sg.Checkbox('utf-8', default=c_utf_8, key='utf_8', enable_events=True),
-                           sg.Checkbox('asc', default=c_asc, key='asc', enable_events=True)],
+                           sg.Checkbox('asc', default=c_asc, key='asc', enable_events=True),
+                           sg.Checkbox('hex', default=c_hex, key='hex', enable_events=True)],
                           ]
 
     dialog_layout = [[sg.Frame('接口选择', interface_layout)],
@@ -179,6 +185,8 @@ def hw_config_dialog(js_cfg):
                     c_format = 'asc'
                 elif cfg_window['utf_8'].get():
                     c_format = 'utf-8'
+                elif cfg_window['hex'].get():
+                    c_format = 'hex'
                 js_cfg['char_format'] = c_format
                 if chip_name in js_cfg['jk_chip']:
                     js_cfg['jk_chip'].remove(chip_name)
@@ -199,11 +207,17 @@ def hw_config_dialog(js_cfg):
             cfg_window['ser_radio'].update(True)
             js_cfg['hw_sel'] = '2'
         elif d_event == 'utf_8':
+            cfg_window['hex'].update(False)
             cfg_window['asc'].update(False)
             cfg_window['utf_8'].update(True)
         elif d_event == 'asc':
             cfg_window['asc'].update(True)
             cfg_window['utf_8'].update(False)
+            cfg_window['hex'].update(False)
+        elif d_event == 'hex':
+            cfg_window['asc'].update(False)
+            cfg_window['utf_8'].update(False)
+            cfg_window['hex'].update(True)
 
     cfg_window.close()
 
@@ -298,25 +312,27 @@ def db_data_check_error(s):
 
 def log_print_line(win, s, auto_scroll=True):
     sv = ''
+    need_s = ''
     color = 0
     pre_color = -1
     line_tag = re.findall('.+\n', s)
     for idx, v in enumerate(line_tag):
-        v_idx = v.find('BDSCOL(')
-        if v_idx < 0:
+        match = color_pat.search(s)
+        if match is None:
             if pre_color >= 0:
                 sg.cprint(sv, text_color='#%06X' % pre_color, end='', autoscroll=auto_scroll)
                 sv = ''
                 pre_color = -1
             sv += v
+            need_s += v
             color = -1
         else:
+            # 打印上一次v_idx < 0时的颜色(默认颜色)
             if sv != '' and color == -1:
-                # 按照默认色打印
                 sg.cprint(sv, text_color='#%06X' % 0, end='', autoscroll=auto_scroll)
                 sv = ''
             try:
-                color = find_key(v, 'BDSCOL')
+                color = int(match.group(1))  # 提取匹配的数字并转换为整数
             except Exception as e:
                 win[DB_OUT].write('[BDS LOG]RAW string:%s,color error:%s,error code:%s\n' % (s, v, e))
                 log.info('RAW string:%s,color error:%s,error code:%s\n' % (s, v, e))
@@ -324,41 +340,55 @@ def log_print_line(win, s, auto_scroll=True):
             if pre_color < 0:
                 pre_color = color
             if color == pre_color:
-                sv += delete_str('BDSCOL\([0-9]{1,8}\)', v)
+                temp_s = delete_str('BDSCOL\([0-9]{1,8}\)', v)
+                need_s += temp_s
+                sv += temp_s
             else:
                 # 输出上一个颜色的字符串
                 sg.cprint(sv, text_color='#%06X' % pre_color, end='', autoscroll=auto_scroll)
                 sv = delete_str('BDSCOL\([0-9]{1,8}\)', v)
+                need_s += sv
             pre_color = color
     if color < 0:
         color = 0
     if sv != '':
         sg.cprint(sv, text_color='#%06X' % color, end='', autoscroll=auto_scroll)
+        
+    return need_s
+
+
+def save_log_to_file(win, log_s):
+    if win['real_time_save_data'].get_text() == '关闭实时保存数据':
+        try:
+            with open(real_time_save_file_name, 'a', encoding='utf-8') as f:
+                f.write(log_s)
+        except Exception as e:
+            log.info('Write real time data to file error[%s]\n' % e)
 
 
 def log_process(win, obj, js_cfg, auto_scroll=True):
     global log_remain_str
 
+    # read log data
+    raw_log = []
+    obj.read_data_queue(raw_log)
+
+    if js_cfg['char_format'] == 'hex':
+        if raw_log:
+            win[DB_OUT].write(''.join(raw_log))
+        return
+
     filter_pat = []
     if win['filter_en'].get():
         filter_pat = win['filter'].get().split('&&')
 
-    # read log data
-    raw_log = []
-    obj.read_data_queue(raw_log)
     # filter log
     new_log, log_remain_str = log_fileter(raw_log, filter_pat, log_remain_str)
     # Check only asc characters
     if js_cfg['char_format'] != 'asc' or not db_data_check_error(new_log):
-        # print log to GUI
-        log_print_line(win, new_log, auto_scroll)
-        # save log to file
-        if win['real_time_save_data'].get_text() == '关闭实时保存数据':
-            try:
-                with open(real_time_save_file_name, 'a', encoding='utf-8') as f:
-                    f.write(new_log)
-            except Exception as e:
-                log.info('Write real time data to file error[%s]\n' % e)
+        # print log
+        need_log = log_print_line(win, new_log, auto_scroll)
+        save_log_to_file(win, need_log)
     else:
         win[DB_OUT].write("RTT数据出错，可能需要重启设备！ + " + "error data:[" + new_log[0:20] + "]\n")
         log.info("RTT数据出错，可能需要重启设备！ + " + "error data:[" + new_log[0:20] + "]\n")
@@ -495,7 +525,7 @@ def main():
     global real_time_save_file_name
     global log_remain_str
 
-    window = sg.Window('v1.0.1', layout, finalize=True, resizable=True, icon=APP_ICON)
+    window = sg.Window('v1.1.0', layout, finalize=True, resizable=True, icon=APP_ICON)
     window.set_min_size(window.size)
     window[DB_OUT].expand(True, True, True)
     window['data_input'].expand(True, True, True)

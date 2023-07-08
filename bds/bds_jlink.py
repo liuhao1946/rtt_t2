@@ -69,7 +69,7 @@ class BDS_Jlink(HardWareBase):
                 if self.char_format == 'asc':
                     rtt_data_str = ''.join([chr(v) for v in rtt_data])
                     self.hw_data_handle(rtt_data_str)
-                else:
+                elif self.char_format == 'utf-8':
                     # utf-8
                     if len(rtt_data) > 0:
                         self.bytes_data += bytes(rtt_data)
@@ -82,6 +82,8 @@ class BDS_Jlink(HardWareBase):
                         decoded_str = decoded_str.replace("\\n", "\n")
                         self.hw_data_handle(decoded_str)
                         self.bytes_data = b''
+                else:
+                    self.err_cb('J_Link: 不支持的数据格式%s.\n' % self.char_format)
         except Exception as e:
             self.err_cb('J_Link:%s\n' % e)
 

@@ -256,14 +256,14 @@ SEGGER_RTT_printf(0, BDS_COLOR_TAG "(%d)%s", BDS_LOG_COLOR_VIOLET, s);
 由于点击**保存全部数据**按钮完成了两件事，一件将RTT_T2的数据区内的log全部保存到txt文本。另一件是打开这个txt文本。所以如果你将**txt文本的默认打开程序设置为notepad或者vs**，你可以在一个非常强大的编辑器中搜索、编辑log。这也是为什么RTT_T2没有做log检索功能的一个原因。
 
 #### J_Link的的数据传输上限是多少？
-![][https://gitee.com/bds123/bds_tool/raw/master/images/9.jpg]s
+![](https://gitee.com/bds123/bds_tool/raw/master/images/9.jpg)
 
 从上图可见，RTT的传输速度可达1us传输82个字符，这速度还是相当可观的。
 
 > 测试条件：STM32F407 Cortex-M4，时钟168M
 
 还有一组RTT的传输速度曲线可供参考。
-![][https://gitee.com/bds123/bds_tool/raw/master/images/10.png]
+![](https://gitee.com/bds123/bds_tool/raw/master/images/10.png)
 
 ---
 

@@ -58,13 +58,20 @@ def download_thread(dialog, rtt_cur_version):
             home_dir = os.path.expanduser('~')
             download_dir = os.path.join(home_dir, 'Downloads')
             # 获取版本号
-            latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/bds_tool/releases").json()[-1]
+            try:
+                latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/bds_tool/releases").json()[-1]
+                print('Download from gitee.')
+            except:
+                latest_release = requests.get("https://api.github.com/repos/liuhao1946/rtt_t2/releases").json()[0]
+                print('Download from github.')
+
             rtt_latest_version = latest_release['tag_name']
-            print('rtt latest version: %s' % rtt_latest_version)
+            print('rtt latest version %s' % rtt_latest_version)
 
             if rtt_cur_version != rtt_latest_version:
                 download_url = latest_release['assets'][0]['browser_download_url']
-                filename = os.path.join(download_dir, latest_release['assets'][0]['name'])
+                tag_name = latest_release['assets'][0]['name']
+                filename = os.path.join(download_dir, tag_name)
 
                 print('Download url: %s' % download_url)
                 print('Download path : %s' % filename)
@@ -573,8 +580,13 @@ def main():
     rtt_cur_version = 'v1.0.0'
 
     try:
-        response = requests.get("https://gitee.com/api/v5/repos/bds123/bds_tool/releases")
-        rtt_latest_version = response.json()[-1]['tag_name']
+        try:
+            latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/bds_tool/releases").json()[-1]
+            print('Download from gitee')
+        except:
+            latest_release = requests.get("https://api.github.com/repos/liuhao1946/rtt_t2/releases").json()[0]
+            print('Download from github')
+        rtt_latest_version = latest_release['tag_name']
         if rtt_cur_version != rtt_latest_version:
             rtt_cur_version += ' (存在最新版本: %s, 点击配置 → 下载更新)' % rtt_latest_version
             print(rtt_cur_version)

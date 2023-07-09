@@ -4,7 +4,6 @@ import logging as log
 import threading
 import time
 import re
-from bds.hw_base import find_key
 import datetime
 import os
 import bds.bds_jlink as bds_jk
@@ -13,6 +12,7 @@ import bds.bds_serial as bds_ser
 import bds.bds_waveform as wv
 import sys
 import bds.time_diff as td
+import requests
 
 global window
 global hw_obj
@@ -21,6 +21,8 @@ global real_time_save_file_name
 
 thread_lock = threading.Lock()
 
+download_thread_lock = threading.Lock()
+
 DB_OUT = 'db_out' + sg.WRITE_ONLY_KEY
 
 APP_ICON = b'iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAACzNJREFUaEPVWWmUFNUV/m51D4LK4QTjcYnElRhxuppFjSSAozOKTFeP4ILBaKLJcUGZrh7kxN3oMepJFKarR5NgPHqMWxJjRLp6EGNE0QTXMF094IqSuAaMjICCme53c151VU119TKDkHhyf3W9d99997vvvneXJvyfE+1K/Se03nZgP3hvBcUQQqENVqb97V0pv5qsnQLQ2JbahxhnEXAWmI6qoewrYKyAojxsZdqf3NWAvhCAxtauo5SQuAGMk3dQoSstU785uEadkT4AipgI0DEgnghGHxHWCdCq4ojwyrUPXbK11j47DCCipeYRqGsHFXfZn7FMfZr7MWl65379DcpiAPE68rYyoymf1V/eaReKasZdDJwXEGS7CBPWEjAPwDerK8MbQErSyiQelPNqPPUjMBYCNGoIxrjZMvUrvzCAcWfcvmd4W/FpgCf6hPQpTGf3ZBPZ0nzBAnBw+Sa0CsRZFPkJqzv5vDsX0dJXE/gGPy8DmxXG86xgNzC8UwLwMZPynXym/dUvBMBR7k8AjvUJ6FHCYlbPko71ciwaMx5nwom++WcViGt6zI6ngptGY6npTPSY3xBEdHkuk1gc1VJTGLQcwO7OfJ9Q+LjepUlpHIxrvX3fEP1793y24y13fd07IJVv2FZYzsC3fQvuzpn6D93vaMxYxIQO95sJXfmMnqjlFmrMeBuEg+Q8gd4sKmJK79LkP6Mx43gmmAPK8ycAn2CZHX9zjNTOhHRJrpjkjtcEUN3y9BvLTPzAVc5+jRTxoqcs81+sbHJKLeUjceMUYixx5rcUleLENUvnv+konwUwwp1jxvHuxVVj6SSIOwfk0q8tM3FByQhVaCiWl8tULf0YwNMdEZsKIjxubfclH9YCEI0bi5lR2phwRy6jX1iSY2wE8FVn3acQ3OzeGVUzdACpgMyPLFPfuyqAqsr7NvMLUjWDPdcifD+X0e+tpbyjqAxkx5e8ADOsbv2xSKzzECJlnW+d92zWe7KZqCmfSTxddgI1LH97ztTl81hGR05fNDrUEPqXO1hUimOlOwwC4B0AB5Qsx1NzZvJZ+TsaS13KRLf61n4MQMaHK3xj/wDwdd/3+Zap3+kBqKY8AMMy9WQtpVTNeA/A/s78K2gY1mQ9MndDHX75erhPbYtl6n92eWu4ij0tLzuoMJM51OvyM+F7+Yz+gAcgoqVXELhpYHNaaJmJBfUsGtFS5xPoDh/PawURbqp1DyKa8UcCZpX4+RbLTP7YLz8aT1/IzL8K7PlqQ7844fPdqFER9PgAADErn+lYYgNw3t9nfAtfsEz9W35BE05JjysWeTGIh4P5QvcZU+PGVWD81Mf7ekO/aHp5eccHQfARzbiZgMtL47TGMhONFTzx9LnEfLcz3ouGYc3yVFXNuB8yaXQopChfW720/X0bgHSf0PbC68TYzyfQS7wc5WVQsm8+wJ8IEWrp7W5/SX6pmnEdgJ941gEeyZv6qX7lIq2paaRQN4A9nPH3LFO370OQovGUBoHTqIE7epZ09FUYmPlBK5u0wXgupMaMRhBWAvjKgCLcDhF6mhQhlR9dvhF/wkzN7lsd1VI3MOjqknGxzsroh7n8lUHK9uvpOTPhuUQ1IHIsEku3EPFvAexlmw7YHBYhdXX3vL+XAZAf0bb0BBZiRXmCJSNiWcK1zRdw+gDR7LpTJJa+jIhnCMaVvVn9r87pNAPI+NZAYdJkDmXvqRmzGFDBvNrKJpe6QGRxJJTixQyU3ZMg8IpAFtXSxzBYvtfuUXvGYebZRCSfuCd8FutjRku1dNfJe2TkHe6dKimt+Uz7MgfcLwFcFLD+audl26fiVJgutrIJucajqpFYjaePBbN84tykSvra3Jyp2y9ERDNaCXgUQHjAZRJjAfICW2Nb6kSFKQtGg8PTL4hjvUuTMjGU9+YXAObWcp3A+GtF0JlrzEQuyF8zF3IunbTU7iBcbWX0G/2Lo3FjNjN+54xtLYwI7+dWTqqWjgPsuYPN40ReW/l4qhNM/vjyvs3hBLmAhX+eM/XLagGtm402zkgfGgphr5yZeKGaADVmfBeEi0C02C1UIvHOmcTKIz7+7cQ8M5dNyjRZ5k+3Anypb/6NgghPk7Hj8LafjRwuRhwBBf3cj43WssS7g53QDpeU9QQ6F/L3nmsBnysQJ7t1QdDyMsL2i9DUegng/wyAo/xDAELOpmXKlwcx+z1cX+Dw5J1RXu6zS07AcaX7aikfjaevZebrPWsy1kPQ1KG4yH/9BBzlH/AZo8zyUS11OYMGWim7UPkhncBBTXcPHzVycxuDJ4NpsryHANYD9AbAMhv1P4WfEUPLZfUVUnhlmkzvKOHiNLeWtlOYbf1zisDytWZSpss7THVdSG1LHQ5B8r0/fAiStwlGixeBK8pAvKuExVRXeScWrHKaBZ8LheNujBjCXh5LTQBRzbiIgUX+FKCO4KDyc0EsA5VLHyphMdmvfCkeGG+CcajNRCgLdEMFURVANGb4OgCOKJnoMZ5UmF4SCg5lIcaBaCIBexL4Are6UmPpMuWZ8IGg4rRq1VqVFktZnjQUEBUAIlrnZIJiJ2IObQGj3crq9wwmsEqB8yGJ0HG57nmvy7WltByXgflJV974WDomiGU7ZcAtiOO5TLJsrNbeFQBUzZDJ1HhnwfZQiCatfjSxdlLL4lEYsaXh5cyCj6oJq7Qmb1BAU3pM/Q2XX9UM2aCKyG/pnnlTtyNyNRBMmJnP6PL+1aUyAFWsn7RM3YjEjbOIcafdDWG6JJdN3BWUGghUnzIpRwXbgapm/AHAae7awUAQcGrO1P1pSQWYMgBqLPUAiOa41h+9ddPIj/ccPRNgmbQpzjgz6Jy8mZAlnkdqLNUGsl8s+0JakzYNx3XXyQTNI9kabFCKzzDYK3YIdFvOTLRLpooMFigQMLseiHIAmiH7M4eUdrR7lHcCdjXkpgeuMgKgMy0zIS1qk3rSLXtg2LA+Nw8iKjbmMvPXBE0mQYSpsMptL5bw1gVRJOCMWiCCAGSz9kAplIEXCTjap8Bn/vqghJFPtzLJhz0QmiEL+X0dpWqWjPYfGiGW5avXzSZGZy6rz5drq90JMOZYWV0as4yCALzGU4Bvq6IoJ4uiGAOC3d93iUk5wvV1VTM2Axgp5xQhJvR0d/QEN3S/G09ZOEYphFeWncQgIBh0dtB1gwBktdQS2HQLiE6yMonn5HgkbtxLjLMHEPBVVjZ5UzS+6Eh/48lte9QCYLtd6SRkd84+dYe8Zlok3jWDWMhOhkf+erp00j5yoq+/5twEiBavB1QlSDHxBNkeD/xp8ZZl6qUIOwiNn9l5kCiEVgI8phoIVUufDrBM0116zjJ1mZPZVN4blRdMKbgNqY0slOZ8d3vetlbcWADGLT5B74kiHde7LLEu2nrbN1gpyvhh19DEuDaX1cv+gamHQ413HQwW8k74+kScLvaL60MNIVnWHuOuZ9A1eTPhNdIqAtn4eOpoZpqqFOne1csSsu2NinweeJ9ZTJX/lERauyKkCNl5cF4vbCMUx+bM+TJTHTI5XWqZAfi7EZv8fSoQ7rEy+rl+oYMWNGo8fSOY/X+wvVsEaWEqFBjhZjAbAYGDBp9aqI5sW3SYwqGVgQ6h6yr350x94O5Vc6GgYDuw+Bqqg5mTmBfkssmFg/HVm3fcUbqTdxJE9FAuk5hdbV39rsQQAdj/dQma4/ZKdwaAXDteM8YKQL6IBzLhvnxGP6eWzMFdqFTUyKpLHp/dnywj4tTmLaOuWP/Uedt3VvHgeulSg/1pMigAv9AJbV37FwvFMVC4X4TExt5HL5WB70ulHQLwpWpaY/P/AGgCInwIqA/pAAAAAElFTkSuQmCC'
@@ -28,6 +30,7 @@ APP_ICON = b'iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAACzN
 color_pat = re.compile(r'BDSCOL\((\d{1,8})\)', re.I)
 
 sg.theme('DarkBlue11')
+
 
 # 黑：000000
 # 红：FF3030
@@ -45,6 +48,50 @@ def hw_rx_thread():
         finally:
             thread_lock.release()
         time.sleep(run_interval_s)
+
+
+def download_thread(dialog, rtt_cur_version):
+    while True:
+        download_thread_lock.acquire()
+        try:
+            # 获取下载路径
+            home_dir = os.path.expanduser('~')
+            download_dir = os.path.join(home_dir, 'Downloads')
+            # 获取版本号
+            latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/bds_tool/releases").json()[-1]
+            rtt_latest_version = latest_release['tag_name']
+            print('rtt latest version: %s' % rtt_latest_version)
+
+            if rtt_cur_version != rtt_latest_version:
+                download_url = latest_release['assets'][0]['browser_download_url']
+                filename = os.path.join(download_dir, latest_release['assets'][0]['name'])
+
+                print('Download url: %s' % download_url)
+                print('Download path : %s' % filename)
+
+                # 请求文件
+                response = requests.get(download_url, stream=True)
+                # 获取文件大小
+                total_size_in_bytes = int(response.headers.get('Content-Length', 0))
+                block_size = 1024  # 1 Kibibyte
+                download_len = 0
+                print('file total size: %d' % total_size_in_bytes)
+                percent_latest = 0
+                with open(filename, 'wb') as file:
+                    for data in response.iter_content(block_size):
+                        file.write(data)
+                        download_len += len(data)
+                        percent = download_len * 100 // total_size_in_bytes
+                        if percent_latest != percent:
+                            dialog.write_event_value('downloading', percent)
+                            percent_latest = percent
+
+                dialog.write_event_value('download_done', filename)
+            else:
+                dialog.write_event_value('download_err', '1')
+        except Exception as e:
+            print(e)
+            dialog.write_event_value('download_err', '2')
 
 
 def ser_hot_plug_detect(window_ser_sel, des_list, name_list):
@@ -72,7 +119,7 @@ def ser_hot_plug_detect(window_ser_sel, des_list, name_list):
         window_ser_sel.update(default_com[0], values=cur_com_des_list)
 
 
-def hw_config_dialog(js_cfg):
+def hw_config_dialog(js_cfg, rtt_cur_version):
     # 遍历串口
     interface_sel = js_cfg['hw_sel']
     chip_list = js_cfg['jk_chip']
@@ -110,6 +157,12 @@ def hw_config_dialog(js_cfg):
                    ]
                   ]
 
+    # 从服务器上下载最新版本的软件
+    download_layout = [[sg.Button("下载更新", key='download'),
+                        # sg.Button("取消下载", key='quit_download'),
+                        sg.ProgressBar(100, orientation='h', size=(60, 20), key='progressbar')],
+                       ]
+
     # 波形配置
     wave_layout = [[sg.T('y轴下边界'),
                     sg.In(js_cfg['y_range'][0], key='y_min', pad=((10, 1), (1, 1)), size=(10, 1)),
@@ -144,16 +197,25 @@ def hw_config_dialog(js_cfg):
                      [sg.Frame('串口配置', ser_layout)],
                      [sg.Frame('波形图配置', wave_layout)],
                      [sg.Frame('字符编码格式', char_format_layout)],
+                     [sg.Frame('远程下载', download_layout, key='progress_display')],
                      [sg.Button('保存', key='save', pad=((430, 5), (10, 10)), size=(8, 1)),
                       sg.Button('取消', key='clean', pad=((30, 5), (10, 10)), size=(8, 1))]
                      ]
 
-    cfg_window = sg.Window('硬件接口配置', dialog_layout, modal=True)
+    cfg_window = sg.Window('硬件接口配置', dialog_layout, modal=True, icon=APP_ICON)
+    progress_bar = cfg_window['progressbar']
+    progress_display = cfg_window['progress_display']
+    download_button = cfg_window['download']
+
+    download_thread_lock.acquire()
+    threading.Thread(target=download_thread, args=(cfg_window, rtt_cur_version), daemon=True).start()
 
     ser_lost_detect_interval = 0
+    err_code = 0
+    s = ''
     while True:
         d_event, d_values = cfg_window.read(timeout=100)
-        print(d_event)
+        # print(d_event)
 
         ser_lost_detect_interval += 1
         if ser_lost_detect_interval >= 10:
@@ -218,8 +280,30 @@ def hw_config_dialog(js_cfg):
             cfg_window['asc'].update(False)
             cfg_window['utf_8'].update(False)
             cfg_window['hex'].update(True)
+        elif d_event == 'download':
+            if download_button.get_text() == '下载更新':
+                download_button.update('下载中...')
+                download_thread_lock.release()
+                print('start download...')
+        elif d_event == 'download_err':
+            err_code = d_values['download_err']
+            if err_code == '1':
+                progress_display.update('错误：软件已经是最新版本')
+            elif err_code == '2':
+                progress_display.update('错误：下载异常！')
+            download_button.update('下载更新')
+        elif d_event == 'downloading':
+            progress_bar.update(d_values['downloading'])
+            progress_display.update('%d' % d_values['downloading'] + '%')
+        elif d_event == 'download_done':
+            err_code = 1
+            s = d_values['download_done']
+            time.sleep(0.3)
+            break
 
     cfg_window.close()
+
+    return err_code, s
 
 
 def hw_error(err):
@@ -353,7 +437,7 @@ def log_print_line(win, s, auto_scroll=True):
         color = 0
     if sv != '':
         sg.cprint(sv, text_color='#%06X' % color, end='', autoscroll=auto_scroll)
-        
+
     return need_s
 
 
@@ -486,6 +570,16 @@ def main():
 
     font = js_cfg['font'][0] + ' '
     font_size = js_cfg['font_size']
+    rtt_cur_version = 'v1.0.0'
+
+    try:
+        response = requests.get("https://gitee.com/api/v5/repos/bds123/bds_tool/releases")
+        rtt_latest_version = response.json()[-1]['tag_name']
+        if rtt_cur_version != rtt_latest_version:
+            rtt_cur_version += ' (存在最新版本: %s, 点击配置 → 下载更新)' % rtt_latest_version
+            print(rtt_cur_version)
+    except Exception as e:
+        print(e)
 
     sec1_layout = [[sg.T('过滤'), sg.In(js_cfg['filter'], key='filter', size=(50, 1)),
                     sg.Checkbox('', default=False, key='filter_en', enable_events=True),
@@ -525,7 +619,7 @@ def main():
     global real_time_save_file_name
     global log_remain_str
 
-    window = sg.Window('v1.1.0', layout, finalize=True, resizable=True, icon=APP_ICON)
+    window = sg.Window(rtt_cur_version, layout, finalize=True, resizable=True, icon=APP_ICON)
     window.set_min_size(window.size)
     window[DB_OUT].expand(True, True, True)
     window['data_input'].expand(True, True, True)
@@ -550,6 +644,8 @@ def main():
     sg.cprint_set_output_destination(window, DB_OUT)
 
     time_diff = td.TimeDifference()
+
+    rtt_update = ''
 
     while True:
         event, values = window.read(timeout=150)
@@ -673,9 +769,13 @@ def main():
                 json.dump(js_cfg, f, indent=4)
         elif event == 'config':
             if not hw_obj.hw_is_open():
-                hw_config_dialog(js_cfg)
-                update_connect_button_text(window, js_cfg['hw_sel'])
-                hw_obj.hw_set_char_format(js_cfg['char_format'])
+                err_code, rtt_update = hw_config_dialog(js_cfg, rtt_cur_version)
+                if err_code == 0:
+                    update_connect_button_text(window, js_cfg['hw_sel'])
+                    hw_obj.hw_set_char_format(js_cfg['char_format'])
+                elif err_code == 1:
+                    hw_obj.hw_close()
+                    break
             else:
                 sg.popup_no_wait('请先断开硬件连接！')
         elif event == 'wave':
@@ -696,6 +796,10 @@ def main():
 
         log_process(window, hw_obj, js_cfg, auto_scroll=mul_scroll)
         time_diff.print_time_difference()
+
+    if rtt_update != '':
+        print(rtt_update)
+        os.startfile(rtt_update)
 
     window.close()
 

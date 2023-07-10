@@ -61,12 +61,15 @@ def download_thread(dialog, rtt_cur_version):
             try:
                 latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/bds_tool/releases").json()[-1]
                 print('Download from gitee.')
+                log.info('Download from gitee.')
             except:
                 latest_release = requests.get("https://api.github.com/repos/liuhao1946/rtt_t2/releases").json()[0]
                 print('Download from github.')
+                log.info('Download from github.')
 
             rtt_latest_version = latest_release['tag_name']
             print('rtt latest version %s' % rtt_latest_version)
+            log.info('rtt latest version %s' % rtt_latest_version)
 
             if rtt_cur_version != rtt_latest_version:
                 download_url = latest_release['assets'][0]['browser_download_url']
@@ -75,6 +78,8 @@ def download_thread(dialog, rtt_cur_version):
 
                 print('Download url: %s' % download_url)
                 print('Download path : %s' % filename)
+
+                log.info('Download url: %s' % download_url)
 
                 # 请求文件
                 response = requests.get(download_url, stream=True)
@@ -94,6 +99,7 @@ def download_thread(dialog, rtt_cur_version):
                             percent_latest = percent
 
                 dialog.write_event_value('download_done', filename)
+                log.info('download_done')
             else:
                 dialog.write_event_value('download_err', '1')
         except Exception as e:
@@ -291,8 +297,10 @@ def hw_config_dialog(js_cfg, rtt_cur_version):
             if download_button.get_text() == '下载更新':
                 download_button.update('下载中...')
                 download_thread_lock.release()
+                log.info('start download...')
                 print('start download...')
         elif d_event == 'download_err':
+            log.info('download error: ' + d_values['download_err'])
             err_code = d_values['download_err']
             if err_code == '1':
                 progress_display.update('错误：软件已经是最新版本')
@@ -577,20 +585,23 @@ def main():
 
     font = js_cfg['font'][0] + ' '
     font_size = js_cfg['font_size']
-    rtt_cur_version = 'v1.0.0'
+    rtt_cur_version = 'v1.2.0'
 
     try:
         try:
             latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/bds_tool/releases").json()[-1]
             print('Download from gitee')
+            log.info('download source: gitee')
         except:
             latest_release = requests.get("https://api.github.com/repos/liuhao1946/rtt_t2/releases").json()[0]
             print('Download from github')
+            log.info('download source: github')
         rtt_latest_version = latest_release['tag_name']
         if rtt_cur_version != rtt_latest_version:
             rtt_cur_version += ' (存在最新版本: %s, 点击配置 → 下载更新)' % rtt_latest_version
             print(rtt_cur_version)
     except Exception as e:
+        log.info('download error: ' + str(e))
         print(e)
 
     sec1_layout = [[sg.T('过滤'), sg.In(js_cfg['filter'], key='filter', size=(50, 1)),

@@ -15,6 +15,7 @@ import bds.time_diff as td
 import requests
 
 global window
+global cfg_window
 global hw_obj
 global log_remain_str
 global real_time_save_file_name
@@ -22,6 +23,8 @@ global real_time_save_file_name
 thread_lock = threading.Lock()
 
 download_thread_lock = threading.Lock()
+
+download_thread_lock.acquire()
 
 DB_OUT = 'db_out' + sg.WRITE_ONLY_KEY
 
@@ -50,7 +53,8 @@ def hw_rx_thread():
         time.sleep(run_interval_s)
 
 
-def download_thread(dialog, rtt_cur_version):
+def download_thread(rtt_cur_version):
+    print(rtt_cur_version)
     while True:
         download_thread_lock.acquire()
         try:
@@ -95,16 +99,19 @@ def download_thread(dialog, rtt_cur_version):
                         download_len += len(data)
                         percent = download_len * 100 // total_size_in_bytes
                         if percent_latest != percent:
-                            dialog.write_event_value('downloading', percent)
+                            cfg_window.write_event_value('downloading', percent)
                             percent_latest = percent
 
-                dialog.write_event_value('download_done', filename)
+                cfg_window.write_event_value('download_done', filename)
                 log.info('download_done')
             else:
-                dialog.write_event_value('download_err', '1')
+                cfg_window.write_event_value('download_err', '1')
         except Exception as e:
             print(e)
-            dialog.write_event_value('download_err', '2')
+            try:
+                cfg_window.write_event_value('download_err', '2')
+            except:
+                pass
 
 
 def ser_hot_plug_detect(window_ser_sel, des_list, name_list):
@@ -133,6 +140,8 @@ def ser_hot_plug_detect(window_ser_sel, des_list, name_list):
 
 
 def hw_config_dialog(js_cfg, rtt_cur_version):
+    global cfg_window
+
     # 遍历串口
     interface_sel = js_cfg['hw_sel']
     chip_list = js_cfg['jk_chip']
@@ -216,16 +225,15 @@ def hw_config_dialog(js_cfg, rtt_cur_version):
                      ]
 
     cfg_window = sg.Window('硬件接口配置', dialog_layout, modal=True, icon=APP_ICON)
+
     progress_bar = cfg_window['progressbar']
     progress_display = cfg_window['progress_display']
     download_button = cfg_window['download']
 
-    download_thread_lock.acquire()
-    threading.Thread(target=download_thread, args=(cfg_window, rtt_cur_version), daemon=True).start()
-
     ser_lost_detect_interval = 0
     err_code = 0
     s = ''
+
     while True:
         d_event, d_values = cfg_window.read(timeout=100)
         # print(d_event)
@@ -299,6 +307,7 @@ def hw_config_dialog(js_cfg, rtt_cur_version):
                 download_thread_lock.release()
                 log.info('start download...')
                 print('start download...')
+                time.sleep(0.2)
         elif d_event == 'download_err':
             log.info('download error: ' + d_values['download_err'])
             err_code = d_values['download_err']
@@ -585,24 +594,24 @@ def main():
 
     font = js_cfg['font'][0] + ' '
     font_size = js_cfg['font_size']
-    rtt_cur_version = 'v1.2.0'
+    rtt_cur_version = 'v1.1.0'
 
-    try:
-        try:
-            latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/bds_tool/releases").json()[-1]
-            print('Download from gitee')
-            log.info('download source: gitee')
-        except:
-            latest_release = requests.get("https://api.github.com/repos/liuhao1946/rtt_t2/releases").json()[0]
-            print('Download from github')
-            log.info('download source: github')
-        rtt_latest_version = latest_release['tag_name']
-        if rtt_cur_version != rtt_latest_version:
-            rtt_cur_version += ' (存在最新版本: %s, 点击配置 → 下载更新)' % rtt_latest_version
-            print(rtt_cur_version)
-    except Exception as e:
-        log.info('download error: ' + str(e))
-        print(e)
+    # try:
+    #     try:
+    #         latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/bds_tool/releases").json()[-1]
+    #         print('Download from gitee')
+    #         log.info('download source: gitee')
+    #     except:
+    #         latest_release = requests.get("https://api.github.com/repos/liuhao1946/rtt_t2/releases").json()[0]
+    #         print('Download from github')
+    #         log.info('download source: github')
+    #     rtt_latest_version = latest_release['tag_name']
+    #     if rtt_cur_version != rtt_latest_version:
+    #         rtt_cur_version += ' (存在最新版本: %s, 点击配置 → 下载更新)' % rtt_latest_version
+    #         print(rtt_cur_version)
+    # except Exception as e:
+    #     log.info('download error: ' + str(e))
+    #     print(e)
 
     sec1_layout = [[sg.T('过滤'), sg.In(js_cfg['filter'], key='filter', size=(50, 1)),
                     sg.Checkbox('', default=False, key='filter_en', enable_events=True),
@@ -655,6 +664,7 @@ def main():
     hw_obj = jk_obj
 
     threading.Thread(target=hw_rx_thread, daemon=True).start()
+    threading.Thread(target=download_thread, args=(rtt_cur_version,), daemon=True).start()
 
     mul_scroll = False
     real_time_save_file_name = ''
@@ -825,7 +835,6 @@ def main():
         os.startfile(rtt_update)
 
     window.close()
-
 
 if __name__ == '__main__':
     main()

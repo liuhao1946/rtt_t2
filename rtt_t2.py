@@ -71,6 +71,7 @@ def download_thread(rtt_cur_version):
                 print('Download from github.')
                 log.info('Download from github.')
 
+
             rtt_latest_version = latest_release['tag_name']
             print('rtt latest version %s' % rtt_latest_version)
             log.info('rtt latest version %s' % rtt_latest_version)
@@ -594,24 +595,24 @@ def main():
 
     font = js_cfg['font'][0] + ' '
     font_size = js_cfg['font_size']
-    rtt_cur_version = 'v1.1.0'
+    rtt_cur_version = 'v1.2.2'
 
-    # try:
-    #     try:
-    #         latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/bds_tool/releases").json()[-1]
-    #         print('Download from gitee')
-    #         log.info('download source: gitee')
-    #     except:
-    #         latest_release = requests.get("https://api.github.com/repos/liuhao1946/rtt_t2/releases").json()[0]
-    #         print('Download from github')
-    #         log.info('download source: github')
-    #     rtt_latest_version = latest_release['tag_name']
-    #     if rtt_cur_version != rtt_latest_version:
-    #         rtt_cur_version += ' (存在最新版本: %s, 点击配置 → 下载更新)' % rtt_latest_version
-    #         print(rtt_cur_version)
-    # except Exception as e:
-    #     log.info('download error: ' + str(e))
-    #     print(e)
+    try:
+        try:
+            latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/bds_tool/releases").json()[-1]
+            print('Download from gitee')
+            log.info('download source: gitee')
+        except:
+            latest_release = requests.get("https://api.github.com/repos/liuhao1946/rtt_t2/releases").json()[0]
+            print('Download from github')
+            log.info('download source: github')
+        rtt_latest_version = latest_release['tag_name']
+        if rtt_cur_version != rtt_latest_version:
+            rtt_cur_version += ' (存在最新版本: %s, 点击配置 → 下载更新)' % rtt_latest_version
+            print(rtt_cur_version)
+    except Exception as e:
+        log.info('download error: ' + str(e))
+        print(e)
 
     sec1_layout = [[sg.T('过滤'), sg.In(js_cfg['filter'], key='filter', size=(50, 1)),
                     sg.Checkbox('', default=False, key='filter_en', enable_events=True),
@@ -835,6 +836,7 @@ def main():
         os.startfile(rtt_update)
 
     window.close()
+
 
 if __name__ == '__main__':
     main()

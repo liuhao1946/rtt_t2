@@ -21,9 +21,9 @@ def find_group(text, key):
     match = re.search(pattern, text)
     if match:
         n = int(match.group(1))
-        x = float(match.group(2)) if n != 0 else int(match.group(2))
-        y = float(match.group(3)) if n != 0 else int(match.group(3))
-        z = float(match.group(4)) if n != 0 else int(match.group(4))
+        x = int(match.group(2))/(10**n) if n != 0 else int(match.group(2))
+        y = int(match.group(3))/(10**n) if n != 0 else int(match.group(3))
+        z = int(match.group(4))/(10**n) if n != 0 else int(match.group(4))
         return [x, y, z]
     return []
 

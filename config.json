@@ -39,5 +39,6 @@
     ],
     "ser_com": "COM1",
     "ser_des": "\u901a\u4fe1\u7aef\u53e3 (COM1)",
-    "char_format": "asc"
+    "char_format": "asc",
+    "update_flag": true
 }

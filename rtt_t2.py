@@ -15,7 +15,7 @@ import bds.time_diff as td
 import requests
 
 global window
-global cfg_window
+global download_window
 global hw_obj
 global log_remain_str
 global real_time_save_file_name
@@ -71,7 +71,6 @@ def download_thread(rtt_cur_version):
                 print('Download from github.')
                 log.info('Download from github.')
 
-
             rtt_latest_version = latest_release['tag_name']
             print('rtt latest version %s' % rtt_latest_version)
             log.info('rtt latest version %s' % rtt_latest_version)
@@ -100,17 +99,17 @@ def download_thread(rtt_cur_version):
                         download_len += len(data)
                         percent = download_len * 100 // total_size_in_bytes
                         if percent_latest != percent:
-                            cfg_window.write_event_value('downloading', percent)
+                            download_window.write_event_value('downloading', percent)
                             percent_latest = percent
 
-                cfg_window.write_event_value('download_done', filename)
+                download_window.write_event_value('download_done', filename)
                 log.info('download_done')
             else:
-                cfg_window.write_event_value('download_err', '1')
+                download_window.write_event_value('download_err', '1')
         except Exception as e:
             print(e)
             try:
-                cfg_window.write_event_value('download_err', '2')
+                download_window.write_event_value('download_err', '2')
             except:
                 pass
 
@@ -140,7 +139,7 @@ def ser_hot_plug_detect(window_ser_sel, des_list, name_list):
         window_ser_sel.update(default_com[0], values=cur_com_des_list)
 
 
-def hw_config_dialog(js_cfg, rtt_cur_version):
+def hw_config_dialog(js_cfg):
     global cfg_window
 
     # 遍历串口
@@ -180,12 +179,6 @@ def hw_config_dialog(js_cfg, rtt_cur_version):
                    ]
                   ]
 
-    # 从服务器上下载最新版本的软件
-    download_layout = [[sg.Button("下载更新", key='download'),
-                        # sg.Button("取消下载", key='quit_download'),
-                        sg.ProgressBar(100, orientation='h', size=(60, 20), key='progressbar')],
-                       ]
-
     # 波形配置
     wave_layout = [[sg.T('y轴下边界'),
                     sg.In(js_cfg['y_range'][0], key='y_min', pad=((10, 1), (1, 1)), size=(10, 1)),
@@ -220,20 +213,14 @@ def hw_config_dialog(js_cfg, rtt_cur_version):
                      [sg.Frame('串口配置', ser_layout)],
                      [sg.Frame('波形图配置', wave_layout)],
                      [sg.Frame('字符编码格式', char_format_layout)],
-                     [sg.Frame('远程下载', download_layout, key='progress_display')],
                      [sg.Button('保存', key='save', pad=((430, 5), (10, 10)), size=(8, 1)),
                       sg.Button('取消', key='clean', pad=((30, 5), (10, 10)), size=(8, 1))]
                      ]
 
     cfg_window = sg.Window('硬件接口配置', dialog_layout, modal=True, icon=APP_ICON)
 
-    progress_bar = cfg_window['progressbar']
-    progress_display = cfg_window['progress_display']
-    download_button = cfg_window['download']
-
     ser_lost_detect_interval = 0
     err_code = 0
-    s = ''
 
     while True:
         d_event, d_values = cfg_window.read(timeout=100)
@@ -302,33 +289,62 @@ def hw_config_dialog(js_cfg, rtt_cur_version):
             cfg_window['asc'].update(False)
             cfg_window['utf_8'].update(False)
             cfg_window['hex'].update(True)
-        elif d_event == 'download':
-            if download_button.get_text() == '下载更新':
+
+    cfg_window.close()
+
+    return err_code
+
+
+def update_reminder_dislog(font, ver_info):
+    global download_window
+
+    progress_layout = [
+        [sg.ProgressBar(100, orientation='h', size=(60, 20), key='progressbar')]
+    ]
+
+    ver_info = ver_info.replace('\r\n', '\n')
+    update_layout = [
+        [sg.Text(ver_info, key='update_text', font=font)],
+        [sg.Frame('下载进度', progress_layout, key='progress', font=font)],
+        [sg.Button('立刻更新', key='download', font=font),
+         sg.Button('下次更新', key='next_download', font=font),
+         # sg.Button('不再提醒', key='no_download', font=font)
+         ]
+    ]
+
+    s = ''
+    download_window = sg.Window('更新提醒', update_layout, modal=True, icon=APP_ICON, font=font)
+    download_button = download_window['download']
+    progress_bar = download_window['progressbar']
+    progress_display = download_window['progress']
+
+    while True:
+        event, values = download_window.read(timeout=100)
+
+        if event == sg.WINDOW_CLOSED or event == 'next_download':
+            break
+        elif event == 'download':
+            if download_button.get_text() == '立刻更新':
                 download_button.update('下载中...')
                 download_thread_lock.release()
                 log.info('start download...')
                 print('start download...')
                 time.sleep(0.2)
-        elif d_event == 'download_err':
-            log.info('download error: ' + d_values['download_err'])
-            err_code = d_values['download_err']
-            if err_code == '1':
-                progress_display.update('错误：软件已经是最新版本')
-            elif err_code == '2':
-                progress_display.update('错误：下载异常！')
-            download_button.update('下载更新')
-        elif d_event == 'downloading':
-            progress_bar.update(d_values['downloading'])
-            progress_display.update('%d' % d_values['downloading'] + '%')
-        elif d_event == 'download_done':
-            err_code = 1
-            s = d_values['download_done']
+        elif event == 'download_err':
+            log.info('download error: ' + values['download_err'])
+            progress_display.update('下载异常!重启软件或者下次更新')
+            download_button.update('立刻更新')
+        elif event == 'downloading':
+            progress_bar.update(values['downloading'])
+            progress_display.update('%d' % values['downloading'] + '%')
+        elif event == 'download_done':
+            s = values['download_done']
             time.sleep(0.3)
             break
 
-    cfg_window.close()
+    download_window.close()
 
-    return err_code, s
+    return s
 
 
 def hw_error(err):
@@ -595,24 +611,7 @@ def main():
 
     font = js_cfg['font'][0] + ' '
     font_size = js_cfg['font_size']
-    rtt_cur_version = 'v1.2.2'
-
-    try:
-        try:
-            latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/bds_tool/releases").json()[-1]
-            print('Download from gitee')
-            log.info('download source: gitee')
-        except:
-            latest_release = requests.get("https://api.github.com/repos/liuhao1946/rtt_t2/releases").json()[0]
-            print('Download from github')
-            log.info('download source: github')
-        rtt_latest_version = latest_release['tag_name']
-        if rtt_cur_version != rtt_latest_version:
-            rtt_cur_version += ' (存在最新版本: %s, 点击配置 → 下载更新)' % rtt_latest_version
-            print(rtt_cur_version)
-    except Exception as e:
-        log.info('download error: ' + str(e))
-        print(e)
+    rtt_cur_version = 'v1.3.0'
 
     sec1_layout = [[sg.T('过滤'), sg.In(js_cfg['filter'], key='filter', size=(50, 1)),
                     sg.Checkbox('', default=False, key='filter_en', enable_events=True),
@@ -680,6 +679,22 @@ def main():
     time_diff = td.TimeDifference()
 
     rtt_update = ''
+    try:
+        try:
+            latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/bds_tool/releases").json()[-1]
+            print('Download from gitee')
+            log.info('download source: gitee')
+        except:
+            latest_release = requests.get("https://api.github.com/repos/liuhao1946/rtt_t2/releases").json()[0]
+            print('Download from github')
+            log.info('download source: github')
+        if rtt_cur_version != latest_release['tag_name']:
+            ver_info = '软件更新:' + latest_release['tag_name'] + '\n'
+            ver_info += latest_release['body']
+            window.write_event_value('body_event', ver_info)
+    except Exception as e:
+        log.info('download error: ' + str(e))
+        print(e)
 
     while True:
         event, values = window.read(timeout=150)
@@ -803,7 +818,7 @@ def main():
                 json.dump(js_cfg, f, indent=4)
         elif event == 'config':
             if not hw_obj.hw_is_open():
-                err_code, rtt_update = hw_config_dialog(js_cfg, rtt_cur_version)
+                err_code = hw_config_dialog(js_cfg)
                 if err_code == 0:
                     update_connect_button_text(window, js_cfg['hw_sel'])
                     hw_obj.hw_set_char_format(js_cfg['char_format'])
@@ -827,6 +842,10 @@ def main():
                 os.startfile(os.path.dirname(os.path.realpath(sys.argv[0])) + '\\aaa_log')
             except Exception as e:
                 sg.popup_no_wait("%s" % e)
+        elif event == 'body_event':
+            rtt_update = update_reminder_dislog(font, values['body_event'])
+            if rtt_update != '':
+                break
 
         log_process(window, hw_obj, js_cfg, auto_scroll=mul_scroll)
         time_diff.print_time_difference()

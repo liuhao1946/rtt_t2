@@ -21,9 +21,7 @@ global log_remain_str
 global real_time_save_file_name
 
 thread_lock = threading.Lock()
-
 download_thread_lock = threading.Lock()
-
 download_thread_lock.acquire()
 
 DB_OUT = 'db_out' + sg.WRITE_ONLY_KEY
@@ -53,6 +51,28 @@ def hw_rx_thread():
         time.sleep(run_interval_s)
 
 
+def version_detect_thread(win, rtt_cur_version):
+    try:
+        try:
+            print('Download from github')
+            latest_release = requests.get("https://api.github.com/repos/liuhao1946/rtt_t2/releases",
+                                          timeout=5).json()[0]
+            log.info('download source: github')
+        except:
+            print('Download from gitee')
+            latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/bds_tool/releases",
+                                          timeout=5).json()[-1]
+            log.info('download source: gitee')
+
+        if rtt_cur_version != latest_release['tag_name']:
+            ver_info = '软件更新:' + latest_release['tag_name'] + '\n'
+            ver_info += latest_release['body']
+            win.write_event_value('body_event', ver_info)
+    except Exception as e:
+        log.info('download error: ' + str(e))
+        print('download error:' + str(e))
+
+
 def download_thread(rtt_cur_version):
     print(rtt_cur_version)
     while True:
@@ -63,13 +83,15 @@ def download_thread(rtt_cur_version):
             download_dir = os.path.join(home_dir, 'Downloads')
             # 获取版本号
             try:
-                latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/bds_tool/releases").json()[-1]
-                print('Download from gitee.')
-                log.info('Download from gitee.')
-            except:
-                latest_release = requests.get("https://api.github.com/repos/liuhao1946/rtt_t2/releases").json()[0]
+                latest_release = requests.get("https://api.github.com/repos/liuhao1946/rtt_t2/releases",
+                                              timeout=5).json()[0]
                 print('Download from github.')
                 log.info('Download from github.')
+            except:
+                latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/bds_tool/releases",
+                                              timeout=5).json()[-1]
+                print('Download from gitee.')
+                log.info('Download from gitee.')
 
             rtt_latest_version = latest_release['tag_name']
             print('rtt latest version %s' % rtt_latest_version)
@@ -114,31 +136,6 @@ def download_thread(rtt_cur_version):
                 pass
 
 
-def ser_hot_plug_detect(window_ser_sel, des_list, name_list):
-    cur_com_des_list, cur_com_name_list = bds_ser.serial_find()
-    if cur_com_name_list != name_list:
-        default_com = ['']
-        des_new, des_old = set(cur_com_des_list), set(des_list)
-        # 串口增加
-        def_new_len, def_old_len = len(des_new), len(des_old)
-        if def_new_len > def_old_len:
-            # 插入
-            default_com[0] = list(des_new.difference(des_old))[0]
-            log.info('serial update: add ' + default_com[0])
-        elif def_new_len < def_old_len:
-            # 拔出
-            if window_ser_sel.get() in cur_com_des_list:
-                default_com[0] = window_ser_sel.get()
-            log.info('serial update: reduce ' + default_com[0])
-        else:
-            pass
-        del name_list[:]
-        del des_list[:]
-        [name_list.append(v) for v in cur_com_name_list]
-        [des_list.append(v) for v in cur_com_des_list]
-        window_ser_sel.update(default_com[0], values=cur_com_des_list)
-
-
 def hw_config_dialog(js_cfg):
     global cfg_window
 
@@ -167,13 +164,14 @@ def hw_config_dialog(js_cfg):
     # jlink配置
     jk_layout = [[sg.Combo(chip_list, chip_list[0], readonly=True, key='chip', size=(18, 1)),
                   sg.Text('SN'), sg.Input('', readonly=True, key='jk_sn', size=(15, 1)),
-                  sg.T('speed(kHz)'), sg.In(jk_speed, key='jk_sn', size=(5, 1))],
-                 [sg.Checkbox('连接时复位', default=js_cfg['jk_con_reset'], key='jk_reset', font=js_cfg['font'][0])]
+                  sg.T('speed(kHz)'), sg.In(jk_speed, key='jk_sn', size=(5, 1)),
+                 sg.Checkbox('连接时复位', default=js_cfg['jk_con_reset'], key='jk_reset', pad=((40, 10), (1, 1)),
+                             font=js_cfg['font'][0])],
                  ]
     # 串口配置
     ser_layout = [[sg.T('串口'),
                    sg.Combo(com_des_list, default_value=com_des_list[0], key='com_des_list', readonly=True,
-                            size=(30, 1)),
+                            size=(47, 1)),
                    sg.T('波特率', pad=((45, 5), (5, 5))),
                    sg.Combo(baud_list, default_value=baud_list[0], key='baud_list', size=(10, 1), pad=((5, 5), (5, 5)))
                    ]
@@ -229,7 +227,12 @@ def hw_config_dialog(js_cfg):
         ser_lost_detect_interval += 1
         if ser_lost_detect_interval >= 10:
             ser_lost_detect_interval = 0
-            ser_hot_plug_detect(cfg_window['com_des_list'], com_des_list, com_name_list)
+            default_des = bds_ser.ser_hot_plug_detect(cfg_window['com_des_list'].get(), com_des_list, com_name_list)
+            try:
+                if default_des != '':
+                    cfg_window['com_des_list'].update(default_des, values=com_des_list)
+            except ValueError as e:
+                print(e)
 
         if d_event == sg.WINDOW_CLOSED or d_event == 'clean':
             break
@@ -243,12 +246,10 @@ def hw_config_dialog(js_cfg):
                 js_cfg['curves_name'] = cfg_window['curves_name'].get()
 
                 baud = int(cfg_window['baud_list'].get())
-                # 删除重复baud
-                if baud in js_cfg['ser_baud']:
-                    js_cfg['ser_baud'] = [x for x in js_cfg['ser_baud'] if x != baud]
-                js_cfg['ser_baud'].insert(0, baud)
+                js_cfg['ser_baud'] = bds_ser.ser_buad_list_adjust(baud, js_cfg['ser_baud'])
                 if len(js_cfg['ser_baud']) >= 10:
                     js_cfg['ser_baud'].pop()
+
                 js_cfg['ser_des'] = cfg_window['com_des_list'].get()
                 js_cfg['ser_com'] = com_name_list[com_des_list.index(cfg_window['com_des_list'].get())]
 
@@ -268,7 +269,7 @@ def hw_config_dialog(js_cfg):
                     json.dump(js_cfg, f, indent=4)
                 break
             except:
-                sg.Popup('y轴范围设置错误')
+                sg.Popup('y轴范围设置错误', icon=APP_ICON)
         elif d_event == 'jk_radio':
             cfg_window['jk_radio'].update(True)
             cfg_window['ser_radio'].update(False)
@@ -295,7 +296,7 @@ def hw_config_dialog(js_cfg):
     return err_code
 
 
-def update_reminder_dislog(font, ver_info):
+def update_reminder_dialog(font, ver_info):
     global download_window
 
     progress_layout = [
@@ -611,7 +612,7 @@ def main():
 
     font = js_cfg['font'][0] + ' '
     font_size = js_cfg['font_size']
-    rtt_cur_version = 'v1.3.0'
+    rtt_cur_version = 'v1.3.1'
 
     sec1_layout = [[sg.T('过滤'), sg.In(js_cfg['filter'], key='filter', size=(50, 1)),
                     sg.Checkbox('', default=False, key='filter_en', enable_events=True),
@@ -665,6 +666,7 @@ def main():
 
     threading.Thread(target=hw_rx_thread, daemon=True).start()
     threading.Thread(target=download_thread, args=(rtt_cur_version,), daemon=True).start()
+    threading.Thread(target=version_detect_thread, args=(window, rtt_cur_version), daemon=True).start()
 
     mul_scroll = False
     real_time_save_file_name = ''
@@ -679,22 +681,6 @@ def main():
     time_diff = td.TimeDifference()
 
     rtt_update = ''
-    try:
-        try:
-            latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/bds_tool/releases").json()[-1]
-            print('Download from gitee')
-            log.info('download source: gitee')
-        except:
-            latest_release = requests.get("https://api.github.com/repos/liuhao1946/rtt_t2/releases").json()[0]
-            print('Download from github')
-            log.info('download source: github')
-        if rtt_cur_version != latest_release['tag_name']:
-            ver_info = '软件更新:' + latest_release['tag_name'] + '\n'
-            ver_info += latest_release['body']
-            window.write_event_value('body_event', ver_info)
-    except Exception as e:
-        log.info('download error: ' + str(e))
-        print(e)
 
     while True:
         event, values = window.read(timeout=150)
@@ -723,7 +709,7 @@ def main():
             else:
                 window[DB_OUT].write('[J_Link LOG]J_Link错误:' + values['hw_error'] + '\n')
                 window['connect'].update('J_Link连接', button_color=('grey0', 'grey100'))
-            sg.popup(values['hw_error'])
+            sg.popup(values['hw_error'], icon=APP_ICON)
             print('error:' + values['hw_error'])
         elif event == 'hw_warn':
             window[DB_OUT].write('[BDS LOG] ' + values['hw_warn'])
@@ -768,7 +754,7 @@ def main():
                     os.startfile(file_name)
                     window[DB_OUT].update('')
             else:
-                sg.popup('[Error]无数据!!!')
+                sg.popup('[Error]无数据!!!', icon=APP_ICON)
         elif event == '滚动到最底端':
             mul_scroll = True
             window[DB_OUT].update(autoscroll=True)
@@ -789,14 +775,14 @@ def main():
                         print([int(i, 16) for i in input_data.split(' ')])
                         hw_obj.hw_write([int(i, 16) for i in input_data.split(' ')])
                     except:
-                        sg.popup_no_wait('数据格式错误。数据类型请选择HEX，数据之间用空格隔开。')
+                        sg.popup_no_wait('数据格式错误。数据类型请选择HEX，数据之间用空格隔开。', icon=APP_ICON)
                 else:
                     try:
                         hw_obj.hw_write([ord(i) for i in input_data])
                     except Exception as e:
-                        sg.popup_no_wait("%s" % e)
+                        sg.popup_no_wait("%s" % e, icon=APP_ICON)
             else:
-                sg.popup('请先连接硬件')
+                sg.popup('请先连接硬件', icon=APP_ICON)
         elif event == 'history_data':
             window['data_input'].update(window['history_data'].get())
         elif event.startswith('sec1_key'):
@@ -826,7 +812,7 @@ def main():
                     hw_obj.hw_close()
                     break
             else:
-                sg.popup_no_wait('请先断开硬件连接！')
+                sg.popup_no_wait('请先断开硬件连接！', icon=APP_ICON)
         elif event == 'wave':
             if hw_obj.hw_is_open():
                 if len(js_cfg['curves_name']) > 0:
@@ -834,16 +820,16 @@ def main():
                     wv.startup_wave(js_cfg['y_range'], js_cfg['y_label_text'],
                                     [v for v in js_cfg['curves_name'].split('&&') if v != ''])
                 else:
-                    sg.popup_no_wait('没有设置任何轴名称，请至少设置一个轴名称')
+                    sg.popup_no_wait('没有设置任何轴名称，请至少设置一个轴名称', icon=APP_ICON)
             else:
-                sg.popup_no_wait('请先连接硬件')
+                sg.popup_no_wait('请先连接硬件', icon=APP_ICON)
         elif event == 'skip_to_file':
             try:
                 os.startfile(os.path.dirname(os.path.realpath(sys.argv[0])) + '\\aaa_log')
             except Exception as e:
-                sg.popup_no_wait("%s" % e)
+                sg.popup_no_wait("%s" % e, icon=APP_ICON)
         elif event == 'body_event':
-            rtt_update = update_reminder_dislog(font, values['body_event'])
+            rtt_update = update_reminder_dialog(font, values['body_event'])
             if rtt_update != '':
                 break
 

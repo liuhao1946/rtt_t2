@@ -13,6 +13,7 @@ import bds.bds_waveform as wv
 import sys
 import bds.time_diff as td
 import requests
+import webbrowser
 
 global window
 global download_window
@@ -60,7 +61,7 @@ def version_detect_thread(win, rtt_cur_version):
             log.info('download source: github')
         except:
             print('Download from gitee')
-            latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/bds_tool/releases",
+            latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/rtt_t2/releases",
                                           timeout=5).json()[-1]
             log.info('download source: gitee')
 
@@ -88,7 +89,7 @@ def download_thread(rtt_cur_version):
                 print('Download from github.')
                 log.info('Download from github.')
             except:
-                latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/bds_tool/releases",
+                latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/rtt_t2/releases",
                                               timeout=5).json()[-1]
                 print('Download from gitee.')
                 log.info('Download from gitee.')
@@ -158,15 +159,17 @@ def hw_config_dialog(js_cfg):
         ser_sel = True
 
     # 接口选择
+    # https://github.com/liuhao1946/rtt_t2
     interface_layout = [[sg.Radio('J_Link', 'radio1', key='jk_radio', default=jk_sel, enable_events=True),
-                         sg.Radio('串口', 'radio2', key='ser_radio', default=ser_sel, enable_events=True)]]
+                         sg.Radio('串口', 'radio2', key='ser_radio', default=ser_sel, enable_events=True),
+                         ]]
 
     # jlink配置
     jk_layout = [[sg.Combo(chip_list, chip_list[0], readonly=True, key='chip', size=(18, 1)),
                   sg.Text('SN'), sg.Input('', readonly=True, key='jk_sn', size=(15, 1)),
                   sg.T('speed(kHz)'), sg.In(jk_speed, key='jk_sn', size=(5, 1)),
-                 sg.Checkbox('连接时复位', default=js_cfg['jk_con_reset'], key='jk_reset', pad=((40, 10), (1, 1)),
-                             font=js_cfg['font'][0])],
+                  sg.Checkbox('连接时复位', default=js_cfg['jk_con_reset'], key='jk_reset', pad=((40, 10), (1, 1)),
+                              font=js_cfg['font'][0])],
                  ]
     # 串口配置
     ser_layout = [[sg.T('串口'),
@@ -211,11 +214,18 @@ def hw_config_dialog(js_cfg):
                      [sg.Frame('串口配置', ser_layout)],
                      [sg.Frame('波形图配置', wave_layout)],
                      [sg.Frame('字符编码格式', char_format_layout)],
+                     [[sg.Text('gitee仓库地址:'),
+                       sg.Text('https://gitee.com/bds123/rtt_t2', key='gitee_adr', enable_events=True)],
+                      [sg.Text('github仓库地址:'),
+                       sg.Text('https://github.com/liuhao1946/rtt_t2', key='github_adr', enable_events=True)]],
                      [sg.Button('保存', key='save', pad=((430, 5), (10, 10)), size=(8, 1)),
                       sg.Button('取消', key='clean', pad=((30, 5), (10, 10)), size=(8, 1))]
                      ]
 
-    cfg_window = sg.Window('硬件接口配置', dialog_layout, modal=True, icon=APP_ICON)
+    cfg_window = sg.Window('硬件接口配置', dialog_layout, modal=True, icon=APP_ICON, finalize=True)
+
+    cfg_window['gitee_adr'].set_cursor('hand2')
+    cfg_window['github_adr'].set_cursor('hand2')
 
     ser_lost_detect_interval = 0
     err_code = 0
@@ -290,6 +300,8 @@ def hw_config_dialog(js_cfg):
             cfg_window['asc'].update(False)
             cfg_window['utf_8'].update(False)
             cfg_window['hex'].update(True)
+        elif d_event == 'gitee_adr' or d_event == 'github_adr':
+            webbrowser.open(cfg_window[d_event].get())
 
     cfg_window.close()
 
@@ -612,7 +624,7 @@ def main():
 
     font = js_cfg['font'][0] + ' '
     font_size = js_cfg['font_size']
-    rtt_cur_version = 'v1.3.1'
+    rtt_cur_version = 'v1.3.2'
 
     sec1_layout = [[sg.T('过滤'), sg.In(js_cfg['filter'], key='filter', size=(50, 1)),
                     sg.Checkbox('', default=False, key='filter_en', enable_events=True),

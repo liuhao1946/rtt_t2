@@ -109,7 +109,7 @@ def download_thread(rtt_cur_version):
                 log.info('Download url: %s' % download_url)
 
                 # 请求文件
-                response = requests.get(download_url, stream=True)
+                response = requests.get(download_url, timeout=5, stream=True)
                 # 获取文件大小
                 total_size_in_bytes = int(response.headers.get('Content-Length', 0))
                 block_size = 1024  # 1 Kibibyte
@@ -128,11 +128,11 @@ def download_thread(rtt_cur_version):
                 download_window.write_event_value('download_done', filename)
                 log.info('download_done')
             else:
-                download_window.write_event_value('download_err', '1')
+                download_window.write_event_value('download_err', 'no changes to the version')
         except Exception as e:
             print(e)
             try:
-                download_window.write_event_value('download_err', '2')
+                download_window.write_event_value('download_err', str(e))
             except:
                 pass
 
@@ -455,7 +455,7 @@ def log_print_line(win, s, auto_scroll=True):
     pre_color = -1
     line_tag = re.findall('.+\n', s)
     for idx, v in enumerate(line_tag):
-        match = color_pat.search(s)
+        match = color_pat.search(v)
         if match is None:
             if pre_color >= 0:
                 sg.cprint(sv, text_color='#%06X' % pre_color, end='', autoscroll=auto_scroll)
@@ -624,7 +624,7 @@ def main():
 
     font = js_cfg['font'][0] + ' '
     font_size = js_cfg['font_size']
-    rtt_cur_version = 'v1.3.2'
+    rtt_cur_version = 'v1.3.3'
 
     sec1_layout = [[sg.T('过滤'), sg.In(js_cfg['filter'], key='filter', size=(50, 1)),
                     sg.Checkbox('', default=False, key='filter_en', enable_events=True),

@@ -118,7 +118,7 @@ SEGGER_RTT_printf(0, BDS_COLOR_TAG "(%d)%s", BDS_LOG_COLOR_VIOLET, s);
 
 能被RTT_T2识别的颜色标签格式必须是: **BDS_COLOR_TAG(xxx)zzz\n**，xxx为颜色值，zzz为你自己的字符串。
 
-对于发送带有颜色的字符，有一个简单的方法对原始接口进行包装，以简化调用，如下例子：
+对于发送带有颜色的字符，有一个简单的方法对**原始接口进行包装**，以**简化调用**，如下例子：
 ```c
 //原始的打印蓝色字符的接口
 SEGGER_RTT_printf(0, BDS_COLOR_TAG "(%d)%s", BDS_LOG_COLOR_BLUE, s);

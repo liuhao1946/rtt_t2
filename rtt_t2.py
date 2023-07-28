@@ -318,15 +318,20 @@ def update_reminder_dialog(font, ver_info):
     ver_info = ver_info.replace('\r\n', '\n')
     update_layout = [
         [sg.Text(ver_info, key='update_text', font=font)],
+        [sg.Text('gitee下载地址:'), sg.Text('https://gitee.com/bds123/rtt_t2/releases', key='gitee_adr', enable_events=True)],
+        [sg.Text('github下载地址:'), sg.Text('https://github.com/liuhao1946/rtt_t2/releases', key='github_adr', enable_events=True)],
         [sg.Frame('下载进度', progress_layout, key='progress', font=font)],
         [sg.Button('立刻更新', key='download', font=font),
          sg.Button('下次更新', key='next_download', font=font),
-         # sg.Button('不再提醒', key='no_download', font=font)
          ]
     ]
 
     s = ''
-    download_window = sg.Window('更新提醒', update_layout, modal=True, icon=APP_ICON, font=font)
+    download_window = sg.Window('更新提醒', update_layout, modal=True, icon=APP_ICON, font=font, finalize=True)
+
+    download_window['gitee_adr'].set_cursor('hand2')
+    download_window['github_adr'].set_cursor('hand2')
+
     download_button = download_window['download']
     progress_bar = download_window['progressbar']
     progress_display = download_window['progress']
@@ -336,6 +341,8 @@ def update_reminder_dialog(font, ver_info):
 
         if event == sg.WINDOW_CLOSED or event == 'next_download':
             break
+        elif event == 'gitee_adr' or event == 'github_adr':
+            webbrowser.open(download_window[event].get())
         elif event == 'download':
             if download_button.get_text() == '立刻更新':
                 download_button.update('下载中...')

@@ -37,7 +37,7 @@ def ser_hot_plug_detect(last_default_des, last_des_list, last_name_list):
     """
     cur_com_des_list, cur_com_name_list = serial_find()
     default_des = ''
-    if cur_com_name_list != last_name_list:
+    if cur_com_des_list and cur_com_name_list != last_name_list:
         des_new, des_old = set(cur_com_des_list), set(last_des_list)
         # 串口增加
         def_new_len, def_old_len = len(des_new), len(des_old)

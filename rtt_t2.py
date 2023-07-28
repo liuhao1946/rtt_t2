@@ -55,15 +55,15 @@ def hw_rx_thread():
 def version_detect_thread(win, rtt_cur_version):
     try:
         try:
-            print('Download from github')
-            latest_release = requests.get("https://api.github.com/repos/liuhao1946/rtt_t2/releases",
-                                          timeout=5).json()[0]
-            log.info('download source: github')
-        except:
             print('Download from gitee')
             latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/rtt_t2/releases",
                                           timeout=5).json()[-1]
             log.info('download source: gitee')
+        except:
+            print('Download from github')
+            latest_release = requests.get("https://api.github.com/repos/liuhao1946/rtt_t2/releases",
+                                          timeout=5).json()[0]
+            log.info('download source: github')
 
         if rtt_cur_version != latest_release['tag_name']:
             ver_info = '软件更新:' + latest_release['tag_name'] + '\n'
@@ -84,15 +84,15 @@ def download_thread(rtt_cur_version):
             download_dir = os.path.join(home_dir, 'Downloads')
             # 获取版本号
             try:
-                latest_release = requests.get("https://api.github.com/repos/liuhao1946/rtt_t2/releases",
-                                              timeout=5).json()[0]
-                print('Download from github.')
-                log.info('Download from github.')
-            except:
                 latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/rtt_t2/releases",
                                               timeout=5).json()[-1]
                 print('Download from gitee.')
                 log.info('Download from gitee.')
+            except:
+                latest_release = requests.get("https://api.github.com/repos/liuhao1946/rtt_t2/releases",
+                                              timeout=5).json()[0]
+                print('Download from github.')
+                log.info('Download from github.')
 
             rtt_latest_version = latest_release['tag_name']
             print('rtt latest version %s' % rtt_latest_version)
@@ -624,7 +624,7 @@ def main():
 
     font = js_cfg['font'][0] + ' '
     font_size = js_cfg['font_size']
-    rtt_cur_version = 'v1.3.3'
+    rtt_cur_version = 'v1.3.4'
 
     sec1_layout = [[sg.T('过滤'), sg.In(js_cfg['filter'], key='filter', size=(50, 1)),
                     sg.Checkbox('', default=False, key='filter_en', enable_events=True),

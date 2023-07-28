@@ -125,10 +125,16 @@ SEGGER_RTT_printf(0, BDS_COLOR_TAG "(%d)%s", BDS_LOG_COLOR_BLUE, s);
 //使用宏定义进行包装
 #define rtt_print_blue(format, ...)   SEGGER_RTT_printf(0, BDS_COLOR_TAG"(%d)"format, BDS_LOG_COLOR_BLUE, ##__VA_ARGS__);   
 
+//打印蓝色字符串
+rtt_print_blue("%s\n", "test");
+
 //原始的打印红色字符的接口
 SEGGER_RTT_printf(0, BDS_COLOR_TAG "(%d)%s", BDS_LOG_COLOR_BLUE, s);
 //使用宏定义进行包装
 #define rtt_print_red(format, ...)   SEGGER_RTT_printf(0, BDS_COLOR_TAG"(%d)"format, BDS_LOG_COLOR_RED, ##__VA_ARGS__);  
+
+//打印红色字符串
+rtt_print_red("%s\n", "test");
 ```
 
 #### 配置过滤项

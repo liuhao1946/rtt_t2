@@ -402,24 +402,26 @@ def delete_str(pat, s, reverse=False, s_sub=''):
     return s
 
 
-def remove_lines(patterns, text):
+def remove_line(patterns, line, only_exclude):
     """
-    删除包含模式列表中的字符串的行
+    根据选项删除包含或不包含模式列表中的字符串的行
 
     :param patterns: 要匹配的模式列表
-    :param text: 要处理的文本
+    :param line: 要处理的行
+    :param only_exclude: 是否只删除包含模式的行
 
-    :return: 返回删除包含模式的行后的文本
+    :return: 返回处理后的行，如果被过滤则返回空字符串
     """
     if not patterns:
-        return text
+        return line
 
-    lines = text.split('\n')
-    filtered_lines = (line for line in lines if not any(pattern in line for pattern in patterns))
-    return '\n'.join(filtered_lines)
+    if any(pattern in line for pattern in patterns) != only_exclude:
+        return line
+    else:
+        return ''
 
 
-def log_fileter(log_data, filter_pat, remain_str=''):
+def log_fileter(log_data, filter_pat, remain_str='', only_exclude=True):
     raw_s = remain_str + ''.join(log_data)
     log_lines = raw_s.split('\n')
     filtered_lines = []
@@ -428,11 +430,11 @@ def log_fileter(log_data, filter_pat, remain_str=''):
     last_index = len(log_lines) - 1
     for idx, line in enumerate(log_lines):
         if idx < last_index:
-            filtered_line = remove_lines(filter_pat, line + '\n')
+            filtered_line = remove_line(filter_pat, line + '\n', only_exclude)
             filtered_lines.append(filtered_line)
         else:
             if line.endswith('\n'):
-                filtered_line = remove_lines(filter_pat, line + '\n')
+                filtered_line = remove_line(filter_pat, line + '\n', only_exclude)
                 filtered_lines.append(filtered_line)
             else:
                 updated_remain_str = line
@@ -524,11 +526,14 @@ def log_process(win, obj, js_cfg, auto_scroll=True):
         return
 
     filter_pat = []
+    only_exclude = True
     if win['filter_en'].get():
         filter_pat = win['filter'].get().split('&&')
+        if win['filter_inverse'].get():
+            only_exclude = False
 
     # filter log
-    new_log, log_remain_str = log_fileter(raw_log, filter_pat, log_remain_str)
+    new_log, log_remain_str = log_fileter(raw_log, filter_pat, log_remain_str, only_exclude)
     # Check only asc characters
     if js_cfg['char_format'] != 'asc' or not db_data_check_error(new_log):
         # print log
@@ -631,10 +636,11 @@ def main():
 
     font = js_cfg['font'][0] + ' '
     font_size = js_cfg['font_size']
-    rtt_cur_version = 'v1.3.4'
+    rtt_cur_version = 'v1.4.0'
 
     sec1_layout = [[sg.T('过滤'), sg.In(js_cfg['filter'], key='filter', size=(50, 1)),
-                    sg.Checkbox('', default=False, key='filter_en', enable_events=True),
+                    sg.Checkbox('打开过滤器', default=False, key='filter_en', enable_events=True),
+                    sg.Checkbox('取反过滤器', default=False, key='filter_inverse', enable_events=False),
                     ]
                    ]
     tx_data_type = ['ASC', 'HEX']

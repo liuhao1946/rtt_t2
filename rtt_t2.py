@@ -66,75 +66,58 @@ def version_detect_thread(win, rtt_cur_version):
             log.info('download source: github')
 
         if rtt_cur_version != latest_release['tag_name']:
-            ver_info = '软件更新:' + latest_release['tag_name'] + '\n'
-            ver_info += latest_release['body']
-            win.write_event_value('body_event', ver_info)
+            win.write_event_value('latest_release', latest_release)
     except Exception as e:
         log.info('download error: ' + str(e))
         print('download error:' + str(e))
 
 
-def download_thread(rtt_cur_version):
-    print(rtt_cur_version)
-    while True:
-        download_thread_lock.acquire()
+def download_thread(latest_release):
+    download_thread_lock.acquire()
+    try:
+        # 获取下载路径
+        home_dir = os.path.expanduser('~')
+        download_dir = os.path.join(home_dir, 'Downloads')
+        # 获取版本号
+
+        rtt_latest_version = latest_release['tag_name']
+        print('rtt latest version %s' % rtt_latest_version)
+        log.info('rtt latest version %s' % rtt_latest_version)
+
+        download_url = latest_release['assets'][0]['browser_download_url']
+        tag_name = latest_release['assets'][0]['name']
+        filename = os.path.join(download_dir, tag_name)
+
+        print('Download url: %s' % download_url)
+        print('Download path : %s' % filename)
+
+        log.info('Download url: %s' % download_url)
+
+        # 请求文件
+        response = requests.get(download_url, timeout=5, stream=True)
+        # 获取文件大小
+        total_size_in_bytes = int(response.headers.get('Content-Length', 0))
+        block_size = 1024  # 1 Kibibyte
+        download_len = 0
+        print('file total size: %d' % total_size_in_bytes)
+        percent_latest = 0
+        with open(filename, 'wb') as file:
+            for data in response.iter_content(block_size):
+                file.write(data)
+                download_len += len(data)
+                percent = download_len * 100 // total_size_in_bytes
+                if percent_latest != percent:
+                    download_window.write_event_value('downloading', percent)
+                    percent_latest = percent
+
+        download_window.write_event_value('download_done', filename)
+        log.info('download_done')
+    except Exception as e:
+        print(e)
         try:
-            # 获取下载路径
-            home_dir = os.path.expanduser('~')
-            download_dir = os.path.join(home_dir, 'Downloads')
-            # 获取版本号
-            try:
-                latest_release = requests.get("https://gitee.com/api/v5/repos/bds123/rtt_t2/releases",
-                                              timeout=5).json()[-1]
-                print('Download from gitee.')
-                log.info('Download from gitee.')
-            except:
-                latest_release = requests.get("https://api.github.com/repos/liuhao1946/rtt_t2/releases",
-                                              timeout=5).json()[0]
-                print('Download from github.')
-                log.info('Download from github.')
-
-            rtt_latest_version = latest_release['tag_name']
-            print('rtt latest version %s' % rtt_latest_version)
-            log.info('rtt latest version %s' % rtt_latest_version)
-
-            if rtt_cur_version != rtt_latest_version:
-                download_url = latest_release['assets'][0]['browser_download_url']
-                tag_name = latest_release['assets'][0]['name']
-                filename = os.path.join(download_dir, tag_name)
-
-                print('Download url: %s' % download_url)
-                print('Download path : %s' % filename)
-
-                log.info('Download url: %s' % download_url)
-
-                # 请求文件
-                response = requests.get(download_url, timeout=5, stream=True)
-                # 获取文件大小
-                total_size_in_bytes = int(response.headers.get('Content-Length', 0))
-                block_size = 1024  # 1 Kibibyte
-                download_len = 0
-                print('file total size: %d' % total_size_in_bytes)
-                percent_latest = 0
-                with open(filename, 'wb') as file:
-                    for data in response.iter_content(block_size):
-                        file.write(data)
-                        download_len += len(data)
-                        percent = download_len * 100 // total_size_in_bytes
-                        if percent_latest != percent:
-                            download_window.write_event_value('downloading', percent)
-                            percent_latest = percent
-
-                download_window.write_event_value('download_done', filename)
-                log.info('download_done')
-            else:
-                download_window.write_event_value('download_err', 'no changes to the version')
-        except Exception as e:
-            print(e)
-            try:
-                download_window.write_event_value('download_err', str(e))
-            except:
-                pass
+            download_window.write_event_value('download_err', str(e))
+        except:
+            pass
 
 
 def hw_config_dialog(js_cfg):
@@ -308,12 +291,17 @@ def hw_config_dialog(js_cfg):
     return err_code
 
 
-def update_reminder_dialog(font, ver_info):
+def update_reminder_dialog(font, latest_release):
     global download_window
+
+    threading.Thread(target=download_thread, args=(latest_release,), daemon=True).start()
 
     progress_layout = [
         [sg.ProgressBar(100, orientation='h', size=(60, 20), key='progressbar')]
     ]
+
+    ver_info = '软件更新:' + latest_release['tag_name'] + '\n'
+    ver_info += latest_release['body']
 
     ver_info = ver_info.replace('\r\n', '\n')
     update_layout = [
@@ -636,7 +624,7 @@ def main():
 
     font = js_cfg['font'][0] + ' '
     font_size = js_cfg['font_size']
-    rtt_cur_version = 'v1.4.0'
+    rtt_cur_version = 'v1.3.0'
 
     sec1_layout = [[sg.T('过滤'), sg.In(js_cfg['filter'], key='filter', size=(50, 1)),
                     sg.Checkbox('打开过滤器', default=False, key='filter_en', enable_events=True),
@@ -690,7 +678,6 @@ def main():
     hw_obj = jk_obj
 
     threading.Thread(target=hw_rx_thread, daemon=True).start()
-    threading.Thread(target=download_thread, args=(rtt_cur_version,), daemon=True).start()
     threading.Thread(target=version_detect_thread, args=(window, rtt_cur_version), daemon=True).start()
 
     mul_scroll = False
@@ -853,8 +840,8 @@ def main():
                 os.startfile(os.path.dirname(os.path.realpath(sys.argv[0])) + '\\aaa_log')
             except Exception as e:
                 sg.popup_no_wait("%s" % e, icon=APP_ICON)
-        elif event == 'body_event':
-            rtt_update = update_reminder_dialog(font, values['body_event'])
+        elif event == 'latest_release':
+            rtt_update = update_reminder_dialog(font, values['latest_release'])
             if rtt_update != '':
                 break
 

@@ -187,16 +187,32 @@ def hw_config_dialog(js_cfg):
     elif c_format == 'hex':
         c_hex = True
 
+    lb_rn = False
+    lb_n = False
+    lb_none = False
+    if js_cfg['line_break'] == '\r\n':
+        lb_rn = True
+    elif js_cfg['line_break'] == '\n':
+        lb_n = True
+    else:
+        lb_none = True
+
     char_format_layout = [[sg.Checkbox('utf-8', default=c_utf_8, key='utf_8', enable_events=True),
                            sg.Checkbox('asc', default=c_asc, key='asc', enable_events=True),
                            sg.Checkbox('hex', default=c_hex, key='hex', enable_events=True)],
                           ]
 
+    line_break_layout = [[sg.Checkbox(r'\r\n', default=lb_rn, key='lb_rn', enable_events=True),
+                          sg.Checkbox(r'\n', default=lb_n, key='lb_n', enable_events=True),
+                          sg.Checkbox(r'none', default=lb_none, key='lb_none', enable_events=True)
+                          ],
+                         ]
+
     dialog_layout = [[sg.Frame('接口选择', interface_layout)],
                      [sg.Frame('J_Link配置', jk_layout)],
                      [sg.Frame('串口配置', ser_layout)],
                      [sg.Frame('波形图配置', wave_layout)],
-                     [sg.Frame('字符编码格式', char_format_layout)],
+                     [sg.Frame('字符编码格式', char_format_layout), sg.Frame('发送asc追加换行符', line_break_layout)],
                      [[sg.Text('gitee仓库地址:'),
                        sg.Text('https://gitee.com/bds123/rtt_t2', key='gitee_adr', enable_events=True)],
                       [sg.Text('github仓库地址:'),
@@ -215,7 +231,6 @@ def hw_config_dialog(js_cfg):
 
     while True:
         d_event, d_values = cfg_window.read(timeout=100)
-        # print(d_event)
 
         ser_lost_detect_interval += 1
         if ser_lost_detect_interval >= 10:
@@ -253,6 +268,15 @@ def hw_config_dialog(js_cfg):
                 elif cfg_window['hex'].get():
                     c_format = 'hex'
                 js_cfg['char_format'] = c_format
+
+                if cfg_window['lb_rn'].get():
+                    lb_type = "\r\n"
+                elif cfg_window['lb_n'].get():
+                    lb_type = "\n"
+                else:
+                    lb_type = ""
+                js_cfg['line_break'] = lb_type
+
                 if chip_name in js_cfg['jk_chip']:
                     js_cfg['jk_chip'].remove(chip_name)
                 js_cfg['jk_chip'].insert(0, chip_name)
@@ -285,6 +309,18 @@ def hw_config_dialog(js_cfg):
             cfg_window['hex'].update(True)
         elif d_event == 'gitee_adr' or d_event == 'github_adr':
             webbrowser.open(cfg_window[d_event].get())
+        elif d_event == 'lb_rn':
+            cfg_window['lb_rn'].update(True)
+            cfg_window['lb_n'].update(False)
+            cfg_window['lb_none'].update(False)
+        elif d_event == 'lb_n':
+            cfg_window['lb_rn'].update(False)
+            cfg_window['lb_n'].update(True)
+            cfg_window['lb_none'].update(False)
+        elif d_event == 'lb_none':
+            cfg_window['lb_rn'].update(False)
+            cfg_window['lb_n'].update(False)
+            cfg_window['lb_none'].update(True)
 
     cfg_window.close()
 
@@ -306,8 +342,10 @@ def update_reminder_dialog(font, latest_release):
     ver_info = ver_info.replace('\r\n', '\n')
     update_layout = [
         [sg.Text(ver_info, key='update_text', font=font)],
-        [sg.Text('gitee下载地址:'), sg.Text('https://gitee.com/bds123/rtt_t2/releases', key='gitee_adr', enable_events=True)],
-        [sg.Text('github下载地址:'), sg.Text('https://github.com/liuhao1946/rtt_t2/releases', key='github_adr', enable_events=True)],
+        [sg.Text('gitee下载地址:'),
+         sg.Text('https://gitee.com/bds123/rtt_t2/releases', key='gitee_adr', enable_events=True)],
+        [sg.Text('github下载地址:'),
+         sg.Text('https://github.com/liuhao1946/rtt_t2/releases', key='github_adr', enable_events=True)],
         [sg.Frame('下载进度', progress_layout, key='progress', font=font)],
         [sg.Button('立刻更新', key='download', font=font),
          sg.Button('下次更新', key='next_download', font=font),
@@ -624,7 +662,7 @@ def main():
 
     font = js_cfg['font'][0] + ' '
     font_size = js_cfg['font_size']
-    rtt_cur_version = 'v1.3.0'
+    rtt_cur_version = 'v1.5.0'
 
     sec1_layout = [[sg.T('过滤'), sg.In(js_cfg['filter'], key='filter', size=(50, 1)),
                     sg.Checkbox('打开过滤器', default=False, key='filter_en', enable_events=True),
@@ -773,10 +811,12 @@ def main():
         elif event == '清除窗口数据':
             window[DB_OUT].update('')
         elif event == 'tx_data':
+            input_data = window['data_input'].get() + js_cfg['line_break']
+            print(input_data, len(input_data))
             if hw_obj.hw_is_open():
                 input_data = window['data_input'].get()
                 if input_data not in js_cfg['user_input_data']:
-                    if len(js_cfg['user_input_data']) >= 10:
+                    if len(js_cfg['user_input_data']) >= 20:
                         js_cfg['user_input_data'].pop(0)
                     js_cfg['user_input_data'].append(input_data)
                     with open('config.json', 'w') as f:
@@ -790,6 +830,7 @@ def main():
                         sg.popup_no_wait('数据格式错误。数据类型请选择HEX，数据之间用空格隔开。', icon=APP_ICON)
                 else:
                     try:
+                        input_data += js_cfg['line_break']
                         hw_obj.hw_write([ord(i) for i in input_data])
                     except Exception as e:
                         sg.popup_no_wait("%s" % e, icon=APP_ICON)

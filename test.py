@@ -77,4 +77,13 @@ def log_print_line(s, auto_scroll=True):
 
 s = 'BDSCOL(35584)[app_bat_init] current bat percent:0\n'
 
-log_print_line(s)
+# log_print_line(s)
+
+a = [0, 1, 2, 3]
+
+#a.insert(0, 9)
+
+
+b = a.pop(-1)
+
+print(a)

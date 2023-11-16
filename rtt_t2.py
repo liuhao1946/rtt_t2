@@ -133,6 +133,10 @@ def hw_config_dialog(js_cfg):
         com_des_list.append('')
     if not baud_list:
         baud_list.append('')
+    if js_cfg['ser_des'] in com_des_list:
+        def_select_com = js_cfg['ser_des']
+    else:
+        def_select_com = com_des_list[0]
 
     jk_sel = False
     ser_sel = False
@@ -156,7 +160,7 @@ def hw_config_dialog(js_cfg):
                  ]
     # 串口配置
     ser_layout = [[sg.T('串口'),
-                   sg.Combo(com_des_list, default_value=com_des_list[0], key='com_des_list', readonly=True,
+                   sg.Combo(com_des_list, default_value=def_select_com, key='com_des_list', readonly=True,
                             size=(47, 1)),
                    sg.T('波特率', pad=((45, 5), (5, 5))),
                    sg.Combo(baud_list, default_value=baud_list[0], key='baud_list', size=(10, 1), pad=((5, 5), (5, 5)))
@@ -662,7 +666,7 @@ def main():
 
     font = js_cfg['font'][0] + ' '
     font_size = js_cfg['font_size']
-    rtt_cur_version = 'v1.5.0'
+    rtt_cur_version = 'v1.5.1'
 
     sec1_layout = [[sg.T('过滤'), sg.In(js_cfg['filter'], key='filter', size=(50, 1)),
                     sg.Checkbox('打开过滤器', default=False, key='filter_en', enable_events=True),
@@ -811,14 +815,12 @@ def main():
         elif event == '清除窗口数据':
             window[DB_OUT].update('')
         elif event == 'tx_data':
-            input_data = window['data_input'].get() + js_cfg['line_break']
-            print(input_data, len(input_data))
             if hw_obj.hw_is_open():
                 input_data = window['data_input'].get()
                 if input_data not in js_cfg['user_input_data']:
                     if len(js_cfg['user_input_data']) >= 20:
-                        js_cfg['user_input_data'].pop(0)
-                    js_cfg['user_input_data'].append(input_data)
+                        js_cfg['user_input_data'].pop(-1)
+                    js_cfg['user_input_data'].insert(0, input_data)
                     with open('config.json', 'w') as f:
                         json.dump(js_cfg, f, indent=4)
                 window['history_data'].update(input_data, values=js_cfg['user_input_data'])

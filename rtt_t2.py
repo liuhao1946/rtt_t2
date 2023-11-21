@@ -14,6 +14,7 @@ import sys
 import bds.time_diff as td
 import requests
 import webbrowser
+import keyboard
 
 global window
 global download_window
@@ -654,6 +655,49 @@ def Collapsible(layout, key, title='', arrows=(sg.SYMBOL_DOWN, sg.SYMBOL_UP), co
                       [sg.pin(sg.Column(layout, key=key, visible=not collapsed, metadata=arrows))]], pad=(0, 0))
 
 
+def extract_outside_brackets_corrected(text):
+    # 正则表达式模式以匹配英文和中文括号内的文本
+    pattern = r'\([^)]*\)|（[^）]*）'  # 这个模式匹配任何在英文或中文括号内的内容
+    return re.sub(pattern, '', text).strip()
+
+
+# 监听键盘事件
+def listen_for_arrow_keys():
+    last_pressed = None
+    debounce_time = 0.2  # 设置去抖时间，例如0.2秒
+
+    while True:
+        if keyboard.is_pressed('up') and last_pressed != 'up':
+            window.write_event_value('KEY_UP', '')
+            last_pressed = 'up'
+            time.sleep(debounce_time)  # 等待去抖时间后再继续
+        elif keyboard.is_pressed('down') and last_pressed != 'down':
+            window.write_event_value('KEY_DOWN', '')
+            last_pressed = 'down'
+            time.sleep(debounce_time)  # 等待去抖时间后再继续
+        else:
+            last_pressed = None  # 如果没有按键被按下，重置last_pressed
+
+        time.sleep(0.05)
+
+
+def get_next_item(lst, current_index, direction):
+    if not lst:  # 检查列表是否为空
+        return None
+
+    if direction == 'KEY_UP':
+        # 上一个元素的索引，如果当前是第一个元素，则跳转到列表的最后一个元素
+        new_index = (current_index - 1) % len(lst)
+    elif direction == 'KEY_DOWN':
+        # 下一个元素的索引，如果当前是最后一个元素，则跳转到列表的第一个元素
+        new_index = (current_index + 1) % len(lst)
+    else:
+        # 如果方向不是'Up'或'Down'，则返回None
+        return None
+
+    return lst[new_index], new_index
+
+
 def main():
     multiprocessing.freeze_support()
 
@@ -694,7 +738,8 @@ def main():
                             font=(font + font_size + ' bold'))],
 
               [sg.Frame('', tx_data_layout, key='tx_button'), sg.Multiline('', font=(font + font_size + ' bold'),
-                                                                           key='data_input', size=(89, 4)),
+                                                                           key='data_input', size=(89, 4),
+                                                                           enable_events=False),
                ],
               [sg.T('历史数据'),
                sg.Combo(js_cfg['user_input_data'], js_cfg['user_input_data'][0], pad=((35, 5), (1, 1)),
@@ -708,6 +753,7 @@ def main():
     global log_remain_str
 
     window = sg.Window(rtt_cur_version, layout, finalize=True, resizable=True, icon=APP_ICON)
+
     window.set_min_size(window.size)
     window[DB_OUT].expand(True, True, True)
     window['data_input'].expand(True, True, True)
@@ -722,6 +768,9 @@ def main():
     threading.Thread(target=hw_rx_thread, daemon=True).start()
     threading.Thread(target=version_detect_thread, args=(window, rtt_cur_version), daemon=True).start()
 
+    # 启动键盘监听线程
+    threading.Thread(target=listen_for_arrow_keys, daemon=True).start()
+
     mul_scroll = False
     real_time_save_file_name = ''
     log_remain_str = ''
@@ -735,6 +784,8 @@ def main():
     time_diff = td.TimeDifference()
 
     rtt_update = ''
+    data_input_focus_state = False
+    new_index = 0
 
     while True:
         event, values = window.read(timeout=150)
@@ -742,6 +793,15 @@ def main():
         if event == sg.WIN_CLOSED:
             hw_obj.hw_close()
             break
+
+        try:
+            if window.find_element_with_focus() != 'popdown':
+                if window.find_element_with_focus() == window['data_input']:
+                    data_input_focus_state = True
+                else:
+                    data_input_focus_state = False
+        except:
+            pass
 
         # Sliding control of log window
         y1, y2 = window[DB_OUT].get_vscroll_position()
@@ -818,6 +878,8 @@ def main():
             if hw_obj.hw_is_open():
                 input_data = window['data_input'].get()
                 if input_data not in js_cfg['user_input_data']:
+                    # 删除空字符串
+                    js_cfg['user_input_data'] = [item for item in js_cfg['user_input_data'] if item != '']
                     if len(js_cfg['user_input_data']) >= 20:
                         js_cfg['user_input_data'].pop(-1)
                     js_cfg['user_input_data'].insert(0, input_data)
@@ -832,7 +894,8 @@ def main():
                         sg.popup_no_wait('数据格式错误。数据类型请选择HEX，数据之间用空格隔开。', icon=APP_ICON)
                 else:
                     try:
-                        input_data += js_cfg['line_break']
+                        input_data = extract_outside_brackets_corrected(input_data) + js_cfg['line_break']
+                        print(input_data)
                         hw_obj.hw_write([ord(i) for i in input_data])
                     except Exception as e:
                         sg.popup_no_wait("%s" % e, icon=APP_ICON)
@@ -887,6 +950,10 @@ def main():
             rtt_update = update_reminder_dialog(font, values['latest_release'])
             if rtt_update != '':
                 break
+        elif data_input_focus_state and (event == 'KEY_UP' or event == 'KEY_DOWN'):
+            new_item, new_index = get_next_item(js_cfg['user_input_data'], new_index, event)
+            if new_item is not None:
+                window['data_input'].update(new_item)
 
         log_process(window, hw_obj, js_cfg, auto_scroll=mul_scroll)
         time_diff.print_time_difference()

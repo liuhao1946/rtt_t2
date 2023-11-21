@@ -952,7 +952,7 @@ def main():
                 break
         elif data_input_focus_state and (event == 'KEY_UP' or event == 'KEY_DOWN'):
             new_item, new_index = get_next_item(js_cfg['user_input_data'], new_index, event)
-            if new_item is not None:
+            if new_item is not None and new_item != '':
                 window['data_input'].update(new_item)
 
         log_process(window, hw_obj, js_cfg, auto_scroll=mul_scroll)

@@ -22,19 +22,7 @@
     "font_size": "12",
     "tx_line": "\n",
     "user_input_data": [
-        "at13(\u4f60\u597d\u554a12)",
-        "at12\uff08\u4f60\u597d\u554a\uff09",
-        "at11\uff08\u4f60\u597d\u554a\uff09",
-        "at10(\u4f60\u597d\u554a)",
-        "at9",
-        "at8",
-        "at7",
-        "at6",
-        "at5",
-        "at4",
-        "at3",
-        "at2",
-        "at1"
+       ""
     ],
     "curves_name": "X&&Y&&Z",
     "y_range": [

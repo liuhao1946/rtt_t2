@@ -621,11 +621,10 @@ def jk_connect(win, obj, jk_cfg):
                 jk_speed = 4000
             start_address = None
             range_size = 0
-            if jk_cfg['rtt_block_address'][0] != '' and jk_cfg['rtt_block_address'][0] != '':
+            if jk_cfg['rtt_block_address'][0] != '' and jk_cfg['rtt_block_address'][1] != '':
                 start_address = int(jk_cfg['rtt_block_address'][0], 16)
                 range_size = int(jk_cfg['rtt_block_address'][1], 16)
                 print(hex(start_address), hex(range_size))
-
             obj.hw_open(speed=jk_speed, chip=jk_cfg['jk_chip'][0], reset_flag=jk_con_reset,
                         start_address=start_address, range_size=range_size)
             if obj.hw_is_open():
@@ -757,7 +756,7 @@ def main():
 
     font = js_cfg['font'][0] + ' '
     font_size = js_cfg['font_size']
-    rtt_cur_version = 'v1.5.1'
+    rtt_cur_version = 'v1.6.0'
 
     sec1_layout = [[sg.T('过滤'), sg.In(js_cfg['filter'], key='filter', size=(50, 1)),
                     sg.Checkbox('打开过滤器', default=False, key='filter_en', enable_events=True),

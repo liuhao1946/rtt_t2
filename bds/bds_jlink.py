@@ -30,7 +30,7 @@ class BDS_Jlink(HardWareBase):
             # mem_data = ''.join(map(chr, self.jlink.memory_read8(start_address, range_size)))
             return mem_data.find("SEGGER RTT")
         else:
-            pass
+            return -1
 
     def hw_open(self, speed=4000, chip='nRF52840_xxAA', reset_flag=True, start_address=None, range_size=0):
         try:

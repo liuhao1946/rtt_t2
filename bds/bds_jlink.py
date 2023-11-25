@@ -2,6 +2,12 @@ import pylink
 from bds.hw_base import HardWareBase
 
 
+def convert_numbers_to_string(numbers, byte_size=8):
+    # 使用生成器表达式和字节串拼接
+    byte_seq = (number.to_bytes(byte_size, 'little', signed=False) for number in numbers)
+    return ''.join(map(lambda b: ''.join(chr(x) for x in b), byte_seq))
+
+
 class BDS_Jlink(HardWareBase):
     def __init__(self, err_cb, warn_cb, chip='nRF52840_xxAA', speed=4000,
                  read_size=8192, tag_detect_timeout_s=6.0, read_rtt_data_interval_s=0.002, char_format='asc', **kwargs):
@@ -17,7 +23,16 @@ class BDS_Jlink(HardWareBase):
         self.clk = 0
         self.bytes_data = b''
 
-    def hw_open(self, speed=4000, chip='nRF52840_xxAA', reset_flag=True):
+    def find_rtt_address(self, start_address, range_size):
+        if start_address is not None:
+            num_bytes = self.jlink.memory_read64(start_address,  (range_size // 8))
+            mem_data = convert_numbers_to_string(num_bytes)
+            # mem_data = ''.join(map(chr, self.jlink.memory_read8(start_address, range_size)))
+            return mem_data.find("SEGGER RTT")
+        else:
+            pass
+
+    def hw_open(self, speed=4000, chip='nRF52840_xxAA', reset_flag=True, start_address=None, range_size=0):
         try:
             # self.rtt_data_queue.queue.clear()
             self.hw_para_init()
@@ -30,11 +45,18 @@ class BDS_Jlink(HardWareBase):
             if reset_flag:
                 self.jlink.reset(ms=10, halt=False)
 
+            offset = self.find_rtt_address(start_address, range_size)
+            if offset >= 0:
+                start_address += offset
+
+            if start_address is not None:
+                print('找到_SEG RTT. 起始地址:%x, 地址偏移量:%d' % (start_address, offset))
+
             if self.jlink.connected():
                 # TODO:考虑再次阅读这个函数
                 # self.jlink.rtt_control()
                 self.jlink.swo_flush()
-                self.jlink.rtt_start()
+                self.jlink.rtt_start(start_address)
                 self.rtt_is_start = True
                 print('jlink connect success...')
         except pylink.errors.JLinkException as e:

@@ -121,6 +121,23 @@ def download_thread(latest_release):
             pass
 
 
+def extract_and_convert_hex(string):
+    # 正则表达式匹配规则
+    pattern = r"(0x[0-9A-Fa-f]+)\s+(0x[0-9A-Fa-f]+)"
+
+    # 使用正则表达式查找匹配项
+    match = re.search(pattern, string)
+    if match:
+        # 提取匹配的十六进制数
+        hex1, hex2 = match.groups()
+        if int(hex1, 16) % 4 != 0:
+            return None
+
+        return hex1, hex2
+    else:
+        return None
+
+
 def hw_config_dialog(js_cfg):
     global cfg_window
 
@@ -146,6 +163,11 @@ def hw_config_dialog(js_cfg):
     else:
         ser_sel = True
 
+    if js_cfg['rtt_block_address'][0] == '' or js_cfg['rtt_block_address'][1] == '':
+        rtt_search_address = ''
+    else:
+        rtt_search_address = js_cfg['rtt_block_address'][0] + ' ' + js_cfg['rtt_block_address'][1]
+
     # 接口选择
     # https://github.com/liuhao1946/rtt_t2
     interface_layout = [[sg.Radio('J_Link', 'radio1', key='jk_radio', default=jk_sel, enable_events=True),
@@ -158,6 +180,8 @@ def hw_config_dialog(js_cfg):
                   sg.T('speed(kHz)'), sg.In(jk_speed, key='jk_sn', size=(5, 1)),
                   sg.Checkbox('连接时复位', default=js_cfg['jk_con_reset'], key='jk_reset', pad=((40, 10), (1, 1)),
                               font=js_cfg['font'][0])],
+                 [sg.T('_SEGGER_RTT地址搜索范围(格式:起始地址 范围大小，比如:0x20000000 0x4000)：')],
+                 [sg.In(rtt_search_address, key='rtt_block_address', size=(50, 1))]
                  ]
     # 串口配置
     ser_layout = [[sg.T('串口'),
@@ -253,6 +277,18 @@ def hw_config_dialog(js_cfg):
             # 将芯片信号写入第一个位置
             chip_name = cfg_window['chip'].get()
             try:
+                if cfg_window['rtt_block_address'].get() != '':
+                    rtt_block_address = extract_and_convert_hex(cfg_window['rtt_block_address'].get())
+                    if rtt_block_address is None:
+                        sg.popup("请输入正确的起始搜索地址以及范围。十六进制字符串必须以 '0x'或者'0X' 开头，两个值之间用空格隔开,"
+                                 "起始地址必须4字节对齐，比如:\"0x20000000\" \"0x1000\"")
+                        continue
+                    else:
+                        js_cfg['rtt_block_address'] = rtt_block_address
+                        print(rtt_block_address[0], rtt_block_address[1])
+                else:
+                    js_cfg['rtt_block_address'] = ['', '']
+
                 js_cfg['y_range'][0] = int(cfg_window['y_min'].get())
                 js_cfg['y_range'][1] = int(cfg_window['y_max'].get())
                 js_cfg['y_label_text'] = cfg_window['y_label_text'].get()
@@ -290,8 +326,8 @@ def hw_config_dialog(js_cfg):
                 with open('config.json', 'w') as f:
                     json.dump(js_cfg, f, indent=4)
                 break
-            except:
-                sg.Popup('y轴范围设置错误', icon=APP_ICON)
+            except Exception as e:
+                sg.Popup(str(e), icon=APP_ICON)
         elif d_event == 'jk_radio':
             cfg_window['jk_radio'].update(True)
             cfg_window['ser_radio'].update(False)
@@ -583,7 +619,15 @@ def jk_connect(win, obj, jk_cfg):
                 jk_speed = int(jk_cfg['jk_speed'])
             except:
                 jk_speed = 4000
-            obj.hw_open(speed=jk_speed, chip=jk_cfg['jk_chip'][0], reset_flag=jk_con_reset)
+            start_address = None
+            range_size = 0
+            if jk_cfg['rtt_block_address'][0] != '' and jk_cfg['rtt_block_address'][0] != '':
+                start_address = int(jk_cfg['rtt_block_address'][0], 16)
+                range_size = int(jk_cfg['rtt_block_address'][1], 16)
+                print(hex(start_address), hex(range_size))
+
+            obj.hw_open(speed=jk_speed, chip=jk_cfg['jk_chip'][0], reset_flag=jk_con_reset,
+                        start_address=start_address, range_size=range_size)
             if obj.hw_is_open():
                 win['connect'].update('J_Link断开', button_color=('grey0', 'green4'))
                 win[DB_OUT].write('[J_Link LOG]sn:%d\n' % obj.get_hw_serial_number())
@@ -667,16 +711,19 @@ def listen_for_arrow_keys():
     debounce_time = 0.2  # 设置去抖时间，例如0.2秒
 
     while True:
-        if keyboard.is_pressed('up') and last_pressed != 'up':
-            window.write_event_value('KEY_UP', '')
-            last_pressed = 'up'
-            time.sleep(debounce_time)  # 等待去抖时间后再继续
-        elif keyboard.is_pressed('down') and last_pressed != 'down':
-            window.write_event_value('KEY_DOWN', '')
-            last_pressed = 'down'
-            time.sleep(debounce_time)  # 等待去抖时间后再继续
-        else:
-            last_pressed = None  # 如果没有按键被按下，重置last_pressed
+        try:
+            if keyboard.is_pressed('up') and last_pressed != 'up':
+                window.write_event_value('KEY_UP', '')
+                last_pressed = 'up'
+                time.sleep(debounce_time)  # 等待去抖时间后再继续
+            elif keyboard.is_pressed('down') and last_pressed != 'down':
+                window.write_event_value('KEY_DOWN', '')
+                last_pressed = 'down'
+                time.sleep(debounce_time)  # 等待去抖时间后再继续
+            else:
+                last_pressed = None  # 如果没有按键被按下，重置last_pressed
+        except:
+            pass
 
         time.sleep(0.05)
 
@@ -803,7 +850,6 @@ def main():
         except:
             pass
 
-        # Sliding control of log window
         y1, y2 = window[DB_OUT].get_vscroll_position()
         if mul_scroll and bool(1 - y2):
             print('autoscroll=False')
@@ -880,7 +926,7 @@ def main():
                 if input_data not in js_cfg['user_input_data']:
                     # 删除空字符串
                     js_cfg['user_input_data'] = [item for item in js_cfg['user_input_data'] if item != '']
-                    if len(js_cfg['user_input_data']) >= 20:
+                    if len(js_cfg['user_input_data']) >= 30:
                         js_cfg['user_input_data'].pop(-1)
                     js_cfg['user_input_data'].insert(0, input_data)
                     with open('config.json', 'w') as f:
@@ -956,7 +1002,7 @@ def main():
                 window['data_input'].update(new_item)
 
         log_process(window, hw_obj, js_cfg, auto_scroll=mul_scroll)
-        time_diff.print_time_difference()
+        # time_diff.print_time_difference()
 
     if rtt_update != '':
         print(rtt_update)

@@ -37,13 +37,13 @@
         9600,
         19200
     ],
-    "ser_com": "COM7",
-    "ser_des": "USB Serial Port (COM7)",
+    "ser_com": "COM1",
+    "ser_des": "\u901a\u4fe1\u7aef\u53e3 (COM1)",
     "char_format": "asc",
     "update_flag": true,
     "line_break": "\n",
     "rtt_block_address": [
-        "",
-        ""
+        "0x20000000",
+        "0x38000"
     ]
 }

@@ -1,17 +1,11 @@
-import PySimpleGUI as sg
 
-# 定义窗口的布局
-layout = [[sg.Button("OK")]]
+def convert_numbers_to_string(numbers, byte_size=4):
+    # 使用生成器表达式和字节串拼接
+    byte_seq = (number.to_bytes(byte_size, 'little', signed=False) for number in numbers)
+    return ''.join(map(lambda b: ''.join(chr(x) for x in b), byte_seq))
 
-# 创建窗口
-window = sg.Window("Demo", layout, finalize=True)
+a = [0x31313132]
 
-# # 创建事件循环
-# while True:
-#     event, values = window.read()
-#     # 如果用户关闭窗口或点击“OK”按钮，则结束循环
-#     if event == "OK" or event == sg.WIN_CLOSED:
-#         break
 
-# 关闭窗口
-window.close()
+print(convert_numbers_to_string(a))
+

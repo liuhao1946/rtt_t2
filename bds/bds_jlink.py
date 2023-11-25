@@ -2,7 +2,7 @@ import pylink
 from bds.hw_base import HardWareBase
 
 
-def convert_numbers_to_string(numbers, byte_size=8):
+def convert_numbers_to_string(numbers, byte_size=4):
     # 使用生成器表达式和字节串拼接
     byte_seq = (number.to_bytes(byte_size, 'little', signed=False) for number in numbers)
     return ''.join(map(lambda b: ''.join(chr(x) for x in b), byte_seq))
@@ -25,9 +25,8 @@ class BDS_Jlink(HardWareBase):
 
     def find_rtt_address(self, start_address, range_size):
         if start_address is not None:
-            num_bytes = self.jlink.memory_read64(start_address,  (range_size // 8))
+            num_bytes = self.jlink.memory_read32(start_address,  (range_size // 4))
             mem_data = convert_numbers_to_string(num_bytes)
-            # mem_data = ''.join(map(chr, self.jlink.memory_read8(start_address, range_size)))
             return mem_data.find("SEGGER RTT")
         else:
             return -1

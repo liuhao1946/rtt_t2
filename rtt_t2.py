@@ -762,8 +762,8 @@ def create_find_window(font=None):
     return sg.Window("查找", find_layout, modal=False, font=font, icon=APP_ICON)
 
 
-def highlight_text(widget, keyword, tag, start='1.0'):
-    """高亮显示关键字，并返回第一个匹配项的位置。"""
+def highlight_text(widget, keyword, tag, current_tag, start='1.0'):
+    """高亮显示所有匹配项，并返回第一个匹配项的位置。"""
     first_match = None
     current = start
     while True:
@@ -774,9 +774,15 @@ def highlight_text(widget, keyword, tag, start='1.0'):
             first_match = current
         end = widget.index(f"{current}+{len(keyword)}c")
         widget.tag_add(tag, current, end)
-        widget.tag_config(tag, background='yellow')
+        widget.tag_config(tag, background='yellow')  # 普通高亮配置 "purple"/"dark orange"/"brown"/"dark grey"/"magenta"
         current = end
     return first_match
+
+
+def highlight_current(widget, start, end, current_tag):
+    """高亮显示当前聚焦的匹配项。"""
+    widget.tag_add(current_tag, start, end)
+    widget.tag_config(current_tag, background='dark grey')  # 当前聚焦项的高亮配置
 
 
 def main():
@@ -1049,6 +1055,7 @@ def main():
             if search_event in (sg.WIN_CLOSED, '关闭'):
                 # 移除全部标签
                 text_widget.tag_remove('found', '1.0', tk.END)
+                text_widget.tag_remove('current', '1.0', tk.END)
                 find_window.close()
                 find_window = None
             elif search_event == 'find':
@@ -1056,13 +1063,17 @@ def main():
                 if find_key != last_search_keyword:
                     last_search_keyword = find_key
                     text_widget.tag_remove('found', '1.0', tk.END)
+                    text_widget.tag_remove('current', '1.0', tk.END)
                     last_search_index = '1.0'
 
                 if last_search_keyword:
-                    next_index = highlight_text(text_widget, last_search_keyword, 'found', last_search_index)
+                    next_index = highlight_text(text_widget, last_search_keyword, 'found', 'current', last_search_index)
                     if next_index:
+                        text_widget.tag_remove('current', '1.0', tk.END)
+                        end_index = f"{next_index}+{len(last_search_keyword)}c"
+                        highlight_current(text_widget, next_index, end_index, 'current')
                         text_widget.see(next_index)
-                        last_search_index = text_widget.index(f"{next_index}+{len(last_search_keyword)}c")
+                        last_search_index = end_index
                     else:
                         sg.popup_no_wait('未找到更多匹配信息!', title='警告', icon=APP_ICON, font=font)
                         last_search_index = '1.0'

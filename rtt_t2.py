@@ -15,6 +15,7 @@ import bds.time_diff as td
 import requests
 import webbrowser
 import keyboard
+import tkinter as tk
 
 global window
 global download_window
@@ -32,7 +33,7 @@ APP_ICON = b'iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAACzN
 
 color_pat = re.compile(r'BDSCOL\((\d{1,8})\)', re.I)
 
-sg.theme('DarkBlue11')
+sg.theme('DefaultNoMoreNagging')
 
 
 # 黑：000000
@@ -246,8 +247,10 @@ def hw_config_dialog(js_cfg):
                        sg.Text('https://gitee.com/bds123/rtt_t2', key='gitee_adr', enable_events=True)],
                       [sg.Text('github仓库地址:'),
                        sg.Text('https://github.com/liuhao1946/rtt_t2', key='github_adr', enable_events=True)]],
-                     [sg.Button('保存', key='save', pad=((430, 5), (10, 10)), size=(8, 1)),
-                      sg.Button('取消', key='clean', pad=((30, 5), (10, 10)), size=(8, 1))]
+                     [sg.Button('保存', key='save', pad=((430, 5), (10, 10)), size=(8, 1),
+                                button_color=('grey0', 'grey100')),
+                      sg.Button('取消', key='clean', pad=((30, 5), (10, 10)), size=(8, 1),
+                                button_color=('grey0', 'grey100'))]
                      ]
 
     cfg_window = sg.Window('硬件接口配置', dialog_layout, modal=True, icon=APP_ICON, finalize=True)
@@ -682,10 +685,11 @@ def ser_connect(win, obj, jk_cfg):
         time.sleep(0.1)
 
 
-def Collapsible(layout, key, title='', arrows=(sg.SYMBOL_DOWN, sg.SYMBOL_UP), collapsed=False):
+def Collapsible(layout, key, title='', font=None, arrows=(sg.SYMBOL_DOWN, sg.SYMBOL_UP), collapsed=False):
     """
     User Defined Element
     A "collapsable section" element. Like a container element that can be collapsed and brought back
+    :param font: font
     :param layout:Tuple[List[sg.Element]]: The layout for the section
     :param key:Any: Key used to make this section visible / invisible
     :param title:str: Title to show next to arrow
@@ -693,8 +697,9 @@ def Collapsible(layout, key, title='', arrows=(sg.SYMBOL_DOWN, sg.SYMBOL_UP), co
     :param collapsed:bool: If True, then the section begins in a collapsed state
     :return:sg.Column: Column including the arrows, title and the layout that is pinned
     """
+    sg.Text()
     return sg.Column([[sg.T((arrows[1] if collapsed else arrows[0]), enable_events=True, k=key + '-BUTTON-'),
-                       sg.T(title, enable_events=True, key=key + '-TITLE-')],
+                       sg.T(title, enable_events=True, key=key + '-TITLE-', font=font)],
                       [sg.pin(sg.Column(layout, key=key, visible=not collapsed, metadata=arrows))]], pad=(0, 0))
 
 
@@ -719,6 +724,10 @@ def listen_for_arrow_keys():
                 window.write_event_value('KEY_DOWN', '')
                 last_pressed = 'down'
                 time.sleep(debounce_time)  # 等待去抖时间后再继续
+            elif keyboard.is_pressed('ctrl+f') and last_pressed != 'ctrl+f':
+                window.write_event_value('CTRL_F', '')
+                last_pressed = 'ctrl+f'
+                time.sleep(debounce_time)
             else:
                 last_pressed = None  # 如果没有按键被按下，重置last_pressed
         except:
@@ -744,6 +753,32 @@ def get_next_item(lst, current_index, direction):
     return lst[new_index], new_index
 
 
+# 定义搜索窗口的创建函数
+def create_find_window(font=None):
+    find_layout = [[sg.Text("搜索内容:", font=font)],
+                   [sg.Input(key='find_key', font=font, size=(50, 1)),
+                    sg.Button("查找下一个", font=font, pad=((10, 10), (5, 5)), key='find',
+                              button_color=('grey0', 'grey100'))]]
+    return sg.Window("查找", find_layout, modal=False, font=font, icon=APP_ICON)
+
+
+def highlight_text(widget, keyword, tag, start='1.0'):
+    """高亮显示关键字，并返回第一个匹配项的位置。"""
+    first_match = None
+    current = start
+    while True:
+        current = widget.search(keyword, current, stopindex=tk.END)
+        if not current:
+            break
+        if not first_match:
+            first_match = current
+        end = widget.index(f"{current}+{len(keyword)}c")
+        widget.tag_add(tag, current, end)
+        widget.tag_config(tag, background='yellow')
+        current = end
+    return first_match
+
+
 def main():
     multiprocessing.freeze_support()
 
@@ -756,17 +791,18 @@ def main():
 
     font = js_cfg['font'][0] + ' '
     font_size = js_cfg['font_size']
-    rtt_cur_version = 'v1.6.0'
+    rtt_cur_version = 'v2.0.0'
 
-    sec1_layout = [[sg.T('过滤'), sg.In(js_cfg['filter'], key='filter', size=(50, 1)),
-                    sg.Checkbox('打开过滤器', default=False, key='filter_en', enable_events=True),
-                    sg.Checkbox('取反过滤器', default=False, key='filter_inverse', enable_events=False),
+    sec1_layout = [[sg.T('过滤', font=font), sg.In(js_cfg['filter'], key='filter', size=(50, 1)),
+                    sg.Checkbox('打开过滤器', default=False, key='filter_en', enable_events=True, font=font),
+                    sg.Checkbox('取反过滤器', default=False, key='filter_inverse', enable_events=False, font=font),
                     ]
                    ]
     tx_data_type = ['ASC', 'HEX']
     right_click_menu = ['', ['清除窗口数据', '滚动到最底端']]
 
-    tx_data_layout = [[sg.Button('发送数据', key='tx_data', pad=((5, 5), (5, 15)), size=(8, 1))],
+    tx_data_layout = [[sg.Button('发送数据', key='tx_data', pad=((5, 5), (5, 15)), size=(8, 1),
+                                 button_color=('grey0', 'grey100'))],
                       [sg.Combo(tx_data_type, tx_data_type[0], readonly=True, key='tx_data_type', size=(8, 1))]]
 
     layout = [[sg.Button('J_Link连接', key='connect', size=(10, 1), font=font, button_color=('grey0', 'grey100')),
@@ -778,7 +814,7 @@ def main():
                sg.Button('配置', button_color=('grey0', 'grey100'), pad=((200, 1), (1, 1)), key='config', size=(9, 1)),
                sg.Button('波形绘制', button_color=('grey0', 'grey100'), key='wave', size=(9, 1))],
 
-              [Collapsible(sec1_layout, 'sec1_key', '过滤设置', collapsed=True)],
+              [Collapsible(sec1_layout, 'sec1_key', '过滤设置', font=font, collapsed=True)],
 
               [sg.Multiline(autoscroll=True, key=DB_OUT, size=(100, 25), right_click_menu=right_click_menu,
                             font=(font + font_size + ' bold'))],
@@ -810,7 +846,6 @@ def main():
     ser_obj = bds_ser.BDS_Serial(hw_error, hw_warn, char_format=js_cfg['char_format'])
 
     hw_obj = jk_obj
-
     threading.Thread(target=hw_rx_thread, daemon=True).start()
     threading.Thread(target=version_detect_thread, args=(window, rtt_cur_version), daemon=True).start()
 
@@ -832,6 +867,10 @@ def main():
     rtt_update = ''
     data_input_focus_state = False
     new_index = 0
+    find_window = None
+    text_widget = window[DB_OUT].Widget
+    last_search_keyword = ''
+    last_search_index = '1.0'
 
     while True:
         event, values = window.read(timeout=150)
@@ -849,7 +888,7 @@ def main():
         except:
             pass
 
-        y1, y2 = window[DB_OUT].get_vscroll_position()
+        y1, y2 = text_widget.yview()
         if mul_scroll and bool(1 - y2):
             print('autoscroll=False')
             mul_scroll = False
@@ -999,6 +1038,34 @@ def main():
             new_item, new_index = get_next_item(js_cfg['user_input_data'], new_index, event)
             if new_item is not None and new_item != '':
                 window['data_input'].update(new_item)
+        elif event == 'CTRL_F':
+            if not find_window:
+                # 创建一个搜索窗体
+                find_window = create_find_window(font=font)
+
+        # 如果搜索窗口已打开，处理搜索窗口事件
+        if find_window:
+            search_event, search_values = find_window.read(timeout=10)
+            if search_event in (sg.WIN_CLOSED, '关闭'):
+                # 移除全部标签
+                text_widget.tag_remove('found', '1.0', tk.END)
+                find_window.close()
+                find_window = None
+            elif search_event == 'find':
+                find_key = find_window['find_key'].get()
+                if find_key != last_search_keyword:
+                    last_search_keyword = find_key
+                    text_widget.tag_remove('found', '1.0', tk.END)
+                    last_search_index = '1.0'
+
+                if last_search_keyword:
+                    next_index = highlight_text(text_widget, last_search_keyword, 'found', last_search_index)
+                    if next_index:
+                        text_widget.see(next_index)
+                        last_search_index = text_widget.index(f"{next_index}+{len(last_search_keyword)}c")
+                    else:
+                        sg.popup_no_wait('未找到更多匹配信息!', title='警告', icon=APP_ICON, font=font)
+                        last_search_index = '1.0'
 
         log_process(window, hw_obj, js_cfg, auto_scroll=mul_scroll)
         # time_diff.print_time_difference()
@@ -1007,6 +1074,8 @@ def main():
         print(rtt_update)
         os.startfile(rtt_update)
 
+    if find_window:
+        find_window.close()
     window.close()
 
 

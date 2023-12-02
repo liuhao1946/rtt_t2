@@ -58,7 +58,8 @@ class HardWareBase:
         if len(s1) > 0:
             if self.timestamp_open:
                 t = '[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[0:-3] + '] '
-                s1 = s1.replace('\n', '\n' + t)
+                lines = s1.splitlines(keepends=True)
+                s1 = ''.join([t + line for line in lines])
             self.data_queue.put(s1)
 
         s_total_len = len(self.rx_str)

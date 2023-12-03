@@ -1048,6 +1048,8 @@ def main():
             if not find_window and text_focus_state:
                 # 创建一个搜索窗体
                 find_window = create_find_window(font=font)
+                last_search_keyword = ''
+
 
         # 如果搜索窗口已打开，处理搜索窗口事件
         if find_window:

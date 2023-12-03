@@ -872,6 +872,7 @@ def main():
 
     rtt_update = ''
     data_input_focus_state = False
+    text_focus_state = False
     new_index = 0
     find_window = None
     text_widget = window[DB_OUT].Widget
@@ -886,11 +887,10 @@ def main():
             break
 
         try:
-            if window.find_element_with_focus() != 'popdown':
-                if window.find_element_with_focus() == window['data_input']:
-                    data_input_focus_state = True
-                else:
-                    data_input_focus_state = False
+            focus = window.find_element_with_focus()
+            text_focus_state = False if focus is None else True
+            if focus != 'popdown':
+                data_input_focus_state = True if focus == window['data_input'] else False
         except:
             pass
 
@@ -1045,7 +1045,7 @@ def main():
             if new_item is not None and new_item != '':
                 window['data_input'].update(new_item)
         elif event == 'CTRL_F':
-            if not find_window:
+            if not find_window and text_focus_state:
                 # 创建一个搜索窗体
                 find_window = create_find_window(font=font)
 

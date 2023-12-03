@@ -762,21 +762,21 @@ def create_find_window(font=None):
     return sg.Window("查找", find_layout, modal=False, font=font, icon=APP_ICON)
 
 
-def highlight_text(widget, keyword, tag, current_tag, start='1.0'):
-    """高亮显示所有匹配项，并返回第一个匹配项的位置。"""
-    first_match = None
+def highlight_text(widget, keyword, tag, start='1.0', end=tk.END):
     current = start
+    first_match = None
     while True:
-        current = widget.search(keyword, current, stopindex=tk.END)
+        current = widget.search(keyword, current, stopindex=end)
         if not current:
             break
         if not first_match:
             first_match = current
-        end = widget.index(f"{current}+{len(keyword)}c")
-        widget.tag_add(tag, current, end)
-        widget.tag_config(tag, background='yellow')  # 普通高亮配置 "purple"/"dark orange"/"brown"/"dark grey"/"magenta"
-        current = end
+        end_match = widget.index(f"{current}+{len(keyword)}c")
+        widget.tag_add(tag, current, end_match)
+        current = end_match
+    widget.tag_config(tag, background='yellow')  # 普通高亮配置
     return first_match
+
 
 
 def highlight_current(widget, start, end, current_tag):
@@ -871,7 +871,6 @@ def main():
     time_diff = td.TimeDifference()
 
     rtt_update = ''
-    need_highlight = True
     data_input_focus_state = False
     text_focus_state = False
     new_index = 0
@@ -879,6 +878,7 @@ def main():
     text_widget = window[DB_OUT].Widget
     last_search_keyword = ''
     last_search_index = '1.0'
+    last_highlight_end = '1.0'
 
     while True:
         event, values = window.read(timeout=150)
@@ -1050,8 +1050,6 @@ def main():
                 # 创建一个搜索窗体
                 find_window = create_find_window(font=font)
                 last_search_keyword = ''
-                need_highlight = True
-
 
         # 如果搜索窗口已打开，处理搜索窗口事件
         if find_window:
@@ -1064,27 +1062,32 @@ def main():
                 find_window = None
             elif search_event == 'find':
                 find_key = find_window['find_key'].get()
+                if find_key == '':
+                    sg.popup('请输入需要查找字符串')
+                    continue
                 if find_key != last_search_keyword:
                     last_search_keyword = find_key
                     text_widget.tag_remove('found', '1.0', tk.END)
                     text_widget.tag_remove('current', '1.0', tk.END)
                     last_search_index = '1.0'
-                    need_highlight = True
+                    last_highlight_end = '1.0'
+                    highlight_text(text_widget, last_search_keyword, 'found')
 
-                if last_search_keyword and need_highlight:
-                    next_index = highlight_text(text_widget, last_search_keyword, 'found', last_search_index)
-                    need_highlight = False  # 不需要再次全部高亮
-                else:
-                    next_index = text_widget.search(last_search_keyword, last_search_index, stopindex=tk.END)
-                    if not next_index:
-                        sg.popup_no_wait('未找到更多匹配信息!', title='警告', icon=APP_ICON, font=font)
-                        next_index = '1.0'  # 重置搜索索引
+                next_index = text_widget.search(last_search_keyword, last_search_index, stopindex=tk.END)
                 if next_index:
                     text_widget.tag_remove('current', '1.0', tk.END)
-                    end_index = f"{next_index}+{len(last_search_keyword)}c"
+                    end_index = text_widget.index(f"{next_index}+{len(last_search_keyword)}c")
+                    # 判断是否需要高亮新的文本
+                    if text_widget.compare(next_index, '>=', last_highlight_end):
+                        highlight_text(text_widget, last_search_keyword, 'found', start=next_index)
+                        last_highlight_end = text_widget.index(tk.END)
+
                     highlight_current(text_widget, next_index, end_index, 'current')
                     text_widget.see(next_index)
                     last_search_index = end_index
+                else:
+                    sg.popup_no_wait('未找到更多匹配信息!', title='警告', icon=APP_ICON, font=font)
+                    last_search_index = '1.0'  # 重置搜索索引
 
         log_process(window, hw_obj, js_cfg, auto_scroll=mul_scroll)
         # time_diff.print_time_difference()

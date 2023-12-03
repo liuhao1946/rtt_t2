@@ -1,8 +1,7 @@
 import PySimpleGUI as sg
 import tkinter as tk
 
-def highlight_text(widget, keyword, tag, current_tag, start='1.0'):
-    """高亮显示所有匹配项，并返回第一个匹配项的位置。"""
+def highlight_text(widget, keyword, tag, start='1.0'):
     first_match = None
     current = start
     while True:
@@ -18,9 +17,8 @@ def highlight_text(widget, keyword, tag, current_tag, start='1.0'):
     return first_match
 
 def highlight_current(widget, start, end, current_tag):
-    """高亮显示当前聚焦的匹配项。"""
     widget.tag_add(current_tag, start, end)
-    widget.tag_config(current_tag, background='magenta')  # 当前聚焦项的高亮配置
+    widget.tag_config(current_tag, background='blue', foreground='white')  # 当前聚焦项的高亮配置
 
 def main():
     data = "123nihao\nabctest\ncdfnif\n...\ntest2\n...123nihaoppp\nabctest\ncdfnif\n...\ntest2\n..." \
@@ -37,6 +35,7 @@ def main():
     text_widget = window['-TEXT-'].Widget
     last_search_keyword = ''
     last_search_index = '1.0'
+    need_highlight = True
 
     while True:
         event, values = window.read()
@@ -48,18 +47,23 @@ def main():
                 text_widget.tag_remove('found', '1.0', tk.END)
                 text_widget.tag_remove('current', '1.0', tk.END)
                 last_search_index = '1.0'
+                need_highlight = True
 
-            if last_search_keyword:
-                next_index = highlight_text(text_widget, last_search_keyword, 'found', 'current', last_search_index)
-                if next_index:
-                    text_widget.tag_remove('current', '1.0', tk.END)  # 移除旧的当前标签
-                    end_index = f"{next_index}+{len(last_search_keyword)}c"
-                    highlight_current(text_widget, next_index, end_index, 'current')
-                    text_widget.see(next_index)
-                    last_search_index = end_index
-                else:
+            if last_search_keyword and need_highlight:
+                next_index = highlight_text(text_widget, last_search_keyword, 'found', last_search_index)
+                need_highlight = False  # 不需要再次高亮
+            else:
+                next_index = text_widget.search(last_search_keyword, last_search_index, stopindex=tk.END)
+                if not next_index:
                     sg.popup('No more matches found')
-                    last_search_index = '1.0'
+                    next_index = '1.0'  # 重置搜索索引
+
+            if next_index:
+                text_widget.tag_remove('current', '1.0', tk.END)
+                end_index = f"{next_index}+{len(last_search_keyword)}c"
+                highlight_current(text_widget, next_index, end_index, 'current')
+                text_widget.see(next_index)
+                last_search_index = end_index
 
     window.close()
 

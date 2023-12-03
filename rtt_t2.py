@@ -871,6 +871,7 @@ def main():
     time_diff = td.TimeDifference()
 
     rtt_update = ''
+    need_highlight = True
     data_input_focus_state = False
     text_focus_state = False
     new_index = 0
@@ -1049,6 +1050,7 @@ def main():
                 # 创建一个搜索窗体
                 find_window = create_find_window(font=font)
                 last_search_keyword = ''
+                need_highlight = True
 
 
         # 如果搜索窗口已打开，处理搜索窗口事件
@@ -1067,18 +1069,22 @@ def main():
                     text_widget.tag_remove('found', '1.0', tk.END)
                     text_widget.tag_remove('current', '1.0', tk.END)
                     last_search_index = '1.0'
+                    need_highlight = True
 
-                if last_search_keyword:
-                    next_index = highlight_text(text_widget, last_search_keyword, 'found', 'current', last_search_index)
-                    if next_index:
-                        text_widget.tag_remove('current', '1.0', tk.END)
-                        end_index = f"{next_index}+{len(last_search_keyword)}c"
-                        highlight_current(text_widget, next_index, end_index, 'current')
-                        text_widget.see(next_index)
-                        last_search_index = end_index
-                    else:
+                if last_search_keyword and need_highlight:
+                    next_index = highlight_text(text_widget, last_search_keyword, 'found', last_search_index)
+                    need_highlight = False  # 不需要再次全部高亮
+                else:
+                    next_index = text_widget.search(last_search_keyword, last_search_index, stopindex=tk.END)
+                    if not next_index:
                         sg.popup_no_wait('未找到更多匹配信息!', title='警告', icon=APP_ICON, font=font)
-                        last_search_index = '1.0'
+                        next_index = '1.0'  # 重置搜索索引
+                if next_index:
+                    text_widget.tag_remove('current', '1.0', tk.END)
+                    end_index = f"{next_index}+{len(last_search_keyword)}c"
+                    highlight_current(text_widget, next_index, end_index, 'current')
+                    text_widget.see(next_index)
+                    last_search_index = end_index
 
         log_process(window, hw_obj, js_cfg, auto_scroll=mul_scroll)
         # time_diff.print_time_difference()

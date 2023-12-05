@@ -755,11 +755,11 @@ def get_next_item(lst, current_index, direction):
 
 # 定义搜索窗口的创建函数
 def create_find_window(font=None):
-    find_layout = [[sg.Text("搜索内容:", font=font)],
+    find_layout = [[sg.Text("查找内容:", font=font)],
                    [sg.Input(key='find_key', font=font, size=(50, 1)),
                     sg.Button("查找下一个", font=font, pad=((10, 10), (5, 5)), key='find',
                               button_color=('grey0', 'grey100'))]]
-    return sg.Window("查找", find_layout, modal=False, font=font, icon=APP_ICON)
+    return sg.Window("查找", find_layout, modal=False, font=font, finalize=True, icon=APP_ICON)
 
 
 def highlight_text(widget, keyword, tag, start='1.0', end=tk.END):
@@ -880,10 +880,12 @@ def main():
     last_search_index = '1.0'
     last_highlight_end = '1.0'
 
-    while True:
-        event, values = window.read(timeout=150)
+    window[DB_OUT].flush()
 
-        if event == sg.WIN_CLOSED:
+    while True:
+        win, event, values = sg.read_all_windows(timeout=150)
+
+        if win == window and event == sg.WIN_CLOSED:
             hw_obj.hw_close()
             break
 
@@ -994,11 +996,11 @@ def main():
                 sg.popup('请先连接硬件', icon=APP_ICON)
         elif event == 'history_data':
             window['data_input'].update(window['history_data'].get())
-        elif event.startswith('sec1_key'):
+        elif event is not None and event.startswith('sec1_key'):
             window['sec1_key'].update(visible=not window['sec1_key'].visible)
             window['sec1_key' + '-BUTTON-'].update(
                 window['sec1_key'].metadata[0] if window['sec1_key'].visible else window['sec1_key'].metadata[1])
-        elif event.startswith('sec2_key'):
+        elif event is not None and event.startswith('sec2_key'):
             window['sec2_key'].update(visible=not window['sec2_key'].visible)
             window['sec2_key' + '-BUTTON-'].update(
                 window['sec2_key'].metadata[0] if window['sec2_key'].visible else window['sec2_key'].metadata[1])
@@ -1051,43 +1053,42 @@ def main():
                 find_window = create_find_window(font=font)
                 last_search_keyword = ''
 
-        # 如果搜索窗口已打开，处理搜索窗口事件
-        if find_window:
-            search_event, search_values = find_window.read(timeout=10)
-            if search_event in (sg.WIN_CLOSED, '关闭'):
-                # 移除全部标签
+        if win == find_window and find_window is not None and event is None:
+            # 移除全部标签
+            text_widget.tag_remove('found', '1.0', tk.END)
+            text_widget.tag_remove('current', '1.0', tk.END)
+            find_window.close()
+            find_window = None
+        elif event == 'find':
+            find_key = find_window['find_key'].get()
+            if find_key == '':
+                sg.popup('请输入需要查找字符串', icon=APP_ICON)
+                continue
+            if find_key != last_search_keyword:
                 text_widget.tag_remove('found', '1.0', tk.END)
                 text_widget.tag_remove('current', '1.0', tk.END)
-                find_window.close()
-                find_window = None
-            elif search_event == 'find':
-                find_key = find_window['find_key'].get()
-                if find_key == '':
-                    sg.popup('请输入需要查找字符串')
+                if highlight_text(text_widget, last_search_keyword, 'found') is None:
+                    sg.popup('没有找到目标字符串', icon=APP_ICON)
                     continue
-                if find_key != last_search_keyword:
-                    last_search_keyword = find_key
-                    text_widget.tag_remove('found', '1.0', tk.END)
-                    text_widget.tag_remove('current', '1.0', tk.END)
-                    last_search_index = '1.0'
-                    last_highlight_end = '1.0'
-                    highlight_text(text_widget, last_search_keyword, 'found')
+                last_search_keyword = find_key
+                last_search_index = '1.0'
+                last_highlight_end = '1.0'
 
-                next_index = text_widget.search(last_search_keyword, last_search_index, stopindex=tk.END)
-                if next_index:
-                    text_widget.tag_remove('current', '1.0', tk.END)
-                    end_index = text_widget.index(f"{next_index}+{len(last_search_keyword)}c")
-                    # 判断是否需要高亮新的文本
-                    if text_widget.compare(next_index, '>=', last_highlight_end):
-                        highlight_text(text_widget, last_search_keyword, 'found', start=next_index)
-                        last_highlight_end = text_widget.index(tk.END)
+            next_index = text_widget.search(last_search_keyword, last_search_index, stopindex=tk.END)
+            if next_index:
+                text_widget.tag_remove('current', '1.0', tk.END)
+                end_index = text_widget.index(f"{next_index}+{len(last_search_keyword)}c")
+                # 判断是否需要高亮新的文本
+                if text_widget.compare(next_index, '>=', last_highlight_end):
+                    highlight_text(text_widget, last_search_keyword, 'found', start=next_index)
+                    last_highlight_end = text_widget.index(tk.END)
 
-                    highlight_current(text_widget, next_index, end_index, 'current')
-                    text_widget.see(next_index)
-                    last_search_index = end_index
-                else:
-                    sg.popup_no_wait('未找到更多匹配信息!', title='警告', icon=APP_ICON, font=font)
-                    last_search_index = '1.0'  # 重置搜索索引
+                highlight_current(text_widget, next_index, end_index, 'current')
+                text_widget.see(next_index)
+                last_search_index = end_index
+            else:
+                sg.popup_no_wait('未找到更多匹配信息!', title='警告', icon=APP_ICON, font=font)
+                last_search_index = '1.0'  # 重置搜索索引
 
         log_process(window, hw_obj, js_cfg, auto_scroll=mul_scroll)
         # time_diff.print_time_difference()
@@ -1096,7 +1097,7 @@ def main():
         print(rtt_update)
         os.startfile(rtt_update)
 
-    if find_window:
+    if find_window is not None:
         find_window.close()
     window.close()
 

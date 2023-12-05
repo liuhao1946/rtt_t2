@@ -1,72 +1,43 @@
 import PySimpleGUI as sg
-import tkinter as tk
+import time
+import gc
 
-def highlight_text(widget, keyword, tag, start='1.0', end=tk.END):
-    current = start
-    first_match = None
-    while True:
-        current = widget.search(keyword, current, stopindex=end)
-        if not current:
-            break
-        if not first_match:
-            first_match = current
-        end_match = widget.index(f"{current}+{len(keyword)}c")
-        widget.tag_add(tag, current, end_match)
-        current = end_match
-    widget.tag_config(tag, background='yellow')  # 普通高亮配置
-    return first_match
+def create_find_window(font=None):
+    find_layout = [[sg.Text("查找内容:", font=font)],
+                   [sg.Input(key='find_key', font=font, size=(50, 1)),
+                    sg.Button("查找下一个", font=font, pad=((10, 10), (5, 5)), key='find',
+                              button_color=('grey0', 'grey100'))],
+                   [sg.Button("关闭", font=font)]]
+    return sg.Window("查找", find_layout, modal=True, font=font, icon=APP_ICON, finalize=True)
 
-def highlight_current(widget, start, end, current_tag):
-    widget.tag_add(current_tag, start, end)
-    widget.tag_config(current_tag, background='blue', foreground='white')  # 当前聚焦项的高亮配置
+def main_window():
+    layout = [[sg.Text("主窗体", font=font)],
+              [sg.Button("打开查找窗体", font=font, key='open_find')]]
+    return sg.Window("主窗体", layout, font=font, icon=APP_ICON, finalize=True)
 
-def main():
-    data = "123nihao\nabctest\ncdfnif\n...\ntest2\n..."
-    sg.theme('DefaultNoMoreNagging')
-    layout = [
-        [sg.Multiline(data, size=(40, 20), key='-TEXT-')],
-        [sg.Input(key='-SEARCH-'), sg.Button('Find', key='-FIND-')]
-    ]
+font = "Helvetica 12"  # 示例字体
+APP_ICON = None  # 示例图标，需要替换为实际路径或变量
 
-    window = sg.Window('Text Search', layout, finalize=True)
-    text_widget = window['-TEXT-'].Widget
-    last_search_keyword = ''
-    last_search_index = '1.0'
-    last_highlight_end = '1.0'
+# 创建并显示主窗体
+main_win = main_window()
 
-    while True:
-        event, values = window.read()
-        if event == sg.WINDOW_CLOSED:
-            break
-        elif event == '-FIND-':
-            search_keyword = values['-SEARCH-']
+# 事件循环
+while True:
+    window, event, values = sg.read_all_windows()
 
-            if search_keyword != last_search_keyword:
-                last_search_keyword = search_keyword
-                text_widget.tag_remove('found', '1.0', tk.END)
-                text_widget.tag_remove('current', '1.0', tk.END)
-                last_search_index = '1.0'
-                last_highlight_end = '1.0'
-                highlight_text(text_widget, last_search_keyword, 'found')
+    # 当用户关闭窗口
+    if event == sg.WINDOW_CLOSED and window == main_win:
+        break
 
-            next_index = text_widget.search(last_search_keyword, last_search_index, stopindex=tk.END)
-            if next_index:
-                text_widget.tag_remove('current', '1.0', tk.END)
-                end_index = text_widget.index(f"{next_index}+{len(last_search_keyword)}c")
+    # 当用户点击 "打开查找窗体" 按钮
+    if event == 'open_find':
+        find_win = create_find_window(font)
+        continue
 
-                # 判断是否需要高亮新的文本
-                if text_widget.compare(next_index, '>', last_highlight_end):
-                    highlight_text(text_widget, last_search_keyword, 'found', start=next_index)
-                    last_highlight_end = text_widget.index(tk.END)
+    # 当用户关闭查找窗体
+    if window == find_win and event in (sg.WINDOW_CLOSED, '关闭'):
+        find_win.close()
 
-                highlight_current(text_widget, next_index, end_index, 'current')
-                text_widget.see(next_index)
-                last_search_index = end_index
-            else:
-                sg.popup('No more matches found')
-                last_search_index = '1.0'  # 重置搜索索引
-
-    window.close()
-
-if __name__ == '__main__':
-    main()
+# 关闭主窗体
+main_win.close()
+gc.collect()

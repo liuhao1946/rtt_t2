@@ -303,7 +303,11 @@ def hw_config_dialog(js_cfg):
                     js_cfg['ser_baud'].pop()
 
                 js_cfg['ser_des'] = cfg_window['com_des_list'].get()
-                js_cfg['ser_com'] = com_name_list[com_des_list.index(cfg_window['com_des_list'].get())]
+
+                try:
+                    js_cfg['ser_com'] = com_name_list[com_des_list.index(cfg_window['com_des_list'].get())]
+                except Exception as e:
+                    js_cfg['ser_com'] = ''
 
                 if cfg_window['asc'].get():
                     c_format = 'asc'
@@ -755,11 +759,12 @@ def get_next_item(lst, current_index, direction):
 
 # 定义搜索窗口的创建函数
 def create_find_window(font=None):
-    find_layout = [[sg.Text("查找内容:", font=font)],
-                   [sg.Input(key='find_key', font=font, size=(50, 1)),
-                    sg.Button("查找下一个", font=font, pad=((10, 10), (5, 5)), key='find',
+    find_layout = [[sg.Input(key='find_key', font=font, size=(50, 1)),
+                    sg.Button("查找下一个", font=font, pad=((10, 10), (5, 5)), key='find_next',
+                              button_color=('grey0', 'grey100'))],
+                   [sg.Button("查找上一个", font=font, pad=((473, 10), (5, 5)), key='find_pre',
                               button_color=('grey0', 'grey100'))]]
-    return sg.Window("查找", find_layout, modal=False, font=font, finalize=True, icon=APP_ICON)
+    return sg.Window("查找内容", find_layout, modal=False, font=font, finalize=True, icon=APP_ICON)
 
 
 def highlight_text(widget, keyword, tag, start='1.0', end=tk.END):
@@ -785,6 +790,18 @@ def highlight_current(widget, start, end, current_tag):
     widget.tag_config(current_tag, background='dark grey')  # 当前聚焦项的高亮配置
 
 
+def find_previous(widget, keyword, start='end', end='1.0'):
+    # 逆向搜索，从结束向开始
+    current = start
+    while True:
+        current = widget.search(keyword, current, stopindex=end, backwards=True)
+        if not current:
+            break
+        start_match = widget.index(f"{current}+{len(keyword)}c")
+        return current  # 返回找到的第一个匹配项的开始位置
+    return None
+
+
 def main():
     multiprocessing.freeze_support()
 
@@ -797,7 +814,7 @@ def main():
 
     font = js_cfg['font'][0] + ' '
     font_size = js_cfg['font_size']
-    rtt_cur_version = 'v2.0.0'
+    rtt_cur_version = 'v2.1.0'
 
     sec1_layout = [[sg.T('过滤', font=font), sg.In(js_cfg['filter'], key='filter', size=(50, 1)),
                     sg.Checkbox('打开过滤器', default=False, key='filter_en', enable_events=True, font=font),
@@ -879,8 +896,7 @@ def main():
     last_search_keyword = ''
     last_search_index = '1.0'
     last_highlight_end = '1.0'
-
-    window[DB_OUT].flush()
+    search_direction = 'next'
 
     while True:
         win, event, values = sg.read_all_windows(timeout=150)
@@ -1059,36 +1075,70 @@ def main():
             text_widget.tag_remove('current', '1.0', tk.END)
             find_window.close()
             find_window = None
-        elif event == 'find':
+        elif event in ('find_next', 'find_pre'):
             find_key = find_window['find_key'].get()
             if find_key == '':
                 sg.popup('请输入需要查找字符串', icon=APP_ICON)
                 continue
             if find_key != last_search_keyword:
-                text_widget.tag_remove('found', '1.0', tk.END)
-                text_widget.tag_remove('current', '1.0', tk.END)
-                if highlight_text(text_widget, last_search_keyword, 'found') is None:
+                # text_widget.tag_remove('found', '1.0', tk.END)
+                # text_widget.tag_remove('current', '1.0', tk.END)
+                if highlight_text(text_widget, find_key, 'found') is None:
                     sg.popup('没有找到目标字符串', icon=APP_ICON)
                     continue
                 last_search_keyword = find_key
                 last_search_index = '1.0'
-                last_highlight_end = '1.0'
+                last_highlight_end = text_widget.index(tk.END)
+                last_highlight_end = text_widget.index(f"{last_highlight_end}-1c")
+                search_direction = 'next'  # 重置搜索方向
+            try:
+                if event == 'find_next':
+                    if search_direction == 'prev':  # 如果之前是向上搜索
+                        last_search_index = text_widget.index(f"{last_search_index}+{len(last_search_keyword)}c")
+                        search_direction = 'next'
+                    next_index = text_widget.search(last_search_keyword, last_search_index, stopindex=tk.END)
+                    if next_index:
+                        if text_widget.tag_ranges('current'):
+                            start_current = text_widget.index('current.first')
+                            text_widget.tag_remove('current', start_current, tk.END)
+                        end_index = text_widget.index(f"{next_index}+{len(last_search_keyword)}c")
+                        # 判断是否需要高亮新的文本
+                        print(next_index, last_highlight_end)
+                        if text_widget.compare(next_index, '>=', last_highlight_end):
+                            # 从其上一个位置开始高亮
+                            start_highlight = text_widget.index(f"{next_index}-1c")
+                            highlight_text(text_widget, last_search_keyword, 'found', start=start_highlight)
+                            last_highlight_end = text_widget.index(tk.END)
 
-            next_index = text_widget.search(last_search_keyword, last_search_index, stopindex=tk.END)
-            if next_index:
-                text_widget.tag_remove('current', '1.0', tk.END)
-                end_index = text_widget.index(f"{next_index}+{len(last_search_keyword)}c")
-                # 判断是否需要高亮新的文本
-                if text_widget.compare(next_index, '>=', last_highlight_end):
-                    highlight_text(text_widget, last_search_keyword, 'found', start=next_index)
-                    last_highlight_end = text_widget.index(tk.END)
-
-                highlight_current(text_widget, next_index, end_index, 'current')
-                text_widget.see(next_index)
-                last_search_index = end_index
-            else:
-                sg.popup_no_wait('未找到更多匹配信息!', title='警告', icon=APP_ICON, font=font)
-                last_search_index = '1.0'  # 重置搜索索引
+                        highlight_current(text_widget, next_index, end_index, 'current')
+                        text_widget.see(next_index)
+                        last_search_index = end_index
+                    else:
+                        sg.popup_no_wait('未找到更多匹配信息!', title='警告', icon=APP_ICON, font=font, keep_on_top=True)
+                        last_search_index = '1.0'  # 重置搜索索引
+                else:
+                    if search_direction == 'next':  # 如果之前是向下搜索
+                        # 先检查 last_search_index 是否已经指向一个已找到的字符串
+                        if text_widget.tag_ranges('current'):
+                            # 将 last_search_index 移动到当前聚焦字符串的开始位置
+                            current_start = text_widget.index('current.first')
+                            # 然后向前移动一个字符
+                            last_search_index = text_widget.index(f"{current_start}-1c")
+                        search_direction = 'prev'
+                    previous_index = find_previous(text_widget, find_key, start=last_search_index)
+                    if previous_index:
+                        if text_widget.tag_ranges('current'):
+                            start_current = text_widget.index('current.first')
+                            text_widget.tag_remove('current', start_current, tk.END)
+                        end_index = text_widget.index(f"{previous_index}+{len(last_search_keyword)}c")
+                        highlight_current(text_widget, previous_index, end_index, 'current')
+                        text_widget.see(previous_index)
+                        last_search_index = previous_index
+                    else:
+                        sg.popup_no_wait('未找到更多匹配信息!', title='警告', icon=APP_ICON, font=font, keep_on_top=True)
+            except Exception as e:
+                log.info(str(e))
+                sg.popup('Error:', str(e), icon=APP_ICON, font=font)
 
         log_process(window, hw_obj, js_cfg, auto_scroll=mul_scroll)
         # time_diff.print_time_difference()

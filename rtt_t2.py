@@ -210,12 +210,15 @@ def hw_config_dialog(js_cfg):
     c_utf_8 = False
     c_asc = False
     c_hex = False
+    c_gb2312 = False
     if c_format == 'utf-8':
         c_utf_8 = True
     elif c_format == 'asc':
         c_asc = True
     elif c_format == 'hex':
         c_hex = True
+    elif c_format == 'gb2312':
+        c_gb2312 = True
 
     lb_rn = False
     lb_n = False
@@ -229,7 +232,8 @@ def hw_config_dialog(js_cfg):
 
     char_format_layout = [[sg.Checkbox('utf-8', default=c_utf_8, key='utf_8', enable_events=True),
                            sg.Checkbox('asc', default=c_asc, key='asc', enable_events=True),
-                           sg.Checkbox('hex', default=c_hex, key='hex', enable_events=True)],
+                           sg.Checkbox('hex', default=c_hex, key='hex', enable_events=True),
+                           sg.Checkbox('gb2312', default=c_gb2312, key='gb2312', enable_events=True)],
                           ]
 
     line_break_layout = [[sg.Checkbox(r'\r\n', default=lb_rn, key='lb_rn', enable_events=True),
@@ -315,6 +319,8 @@ def hw_config_dialog(js_cfg):
                     c_format = 'utf-8'
                 elif cfg_window['hex'].get():
                     c_format = 'hex'
+                elif cfg_window['gb2312'].get():
+                    c_format = 'gb2312'
                 js_cfg['char_format'] = c_format
 
                 if cfg_window['lb_rn'].get():
@@ -347,14 +353,23 @@ def hw_config_dialog(js_cfg):
             cfg_window['hex'].update(False)
             cfg_window['asc'].update(False)
             cfg_window['utf_8'].update(True)
+            cfg_window['gb2312'].update(False)
         elif d_event == 'asc':
             cfg_window['asc'].update(True)
             cfg_window['utf_8'].update(False)
             cfg_window['hex'].update(False)
+            cfg_window['gb2312'].update(False)
         elif d_event == 'hex':
             cfg_window['asc'].update(False)
             cfg_window['utf_8'].update(False)
             cfg_window['hex'].update(True)
+            cfg_window['gb2312'].update(False)
+        elif d_event == 'gb2312':
+            cfg_window['asc'].update(False)
+            cfg_window['utf_8'].update(False)
+            cfg_window['hex'].update(False)
+            cfg_window['gb2312'].update(True)
+
         elif d_event == 'gitee_adr' or d_event == 'github_adr':
             webbrowser.open(cfg_window[d_event].get())
         elif d_event == 'lb_rn':

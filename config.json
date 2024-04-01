@@ -37,9 +37,9 @@
         9600,
         19200
     ],
-    "ser_com": "",
-    "ser_des": "",
-    "char_format": "asc",
+    "ser_com": "COM9",
+    "ser_des": "JLink CDC UART Port (COM9)",
+    "char_format": "gb2312",
     "update_flag": true,
     "line_break": "\n",
     "rtt_block_address": [

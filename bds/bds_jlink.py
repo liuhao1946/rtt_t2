@@ -103,6 +103,19 @@ class BDS_Jlink(HardWareBase):
                         decoded_str = decoded_str.replace("\\n", "\n")
                         self.hw_data_handle(decoded_str)
                         self.bytes_data = b''
+                elif self.char_format == 'gb2312':
+                    # gb2312
+                    if len(rtt_data) > 0:
+                        self.bytes_data += bytes(rtt_data)
+                        self.clk = int((6 / (self.rx_timeout * 1000)))
+                    else:
+                        if self.clk != 0:
+                            self.clk -= 1
+                    if self.clk == 0:
+                        decoded_str = self.bytes_data.decode('gb2312', errors='ignore')
+                        decoded_str = decoded_str.replace("\\n", "\n")
+                        self.hw_data_handle(decoded_str)
+                        self.bytes_data = b''
                 else:
                     self.err_cb('J_Link: 不支持的数据格式%s.\n' % self.char_format)
         except Exception as e:

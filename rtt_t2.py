@@ -723,9 +723,40 @@ def Collapsible(layout, key, title='', font=None, arrows=(sg.SYMBOL_DOWN, sg.SYM
 
 
 def extract_outside_brackets_corrected(text):
-    # 正则表达式模式以匹配英文和中文括号内的文本
-    pattern = r'\([^)]*\)|（[^）]*）'  # 这个模式匹配任何在英文或中文括号内的内容
+    """
+    提取字符串中括号外的文本。
+    """
+    pattern = r'\([^)]*\)|（[^）]*）'
     return re.sub(pattern, '', text).strip()
+
+
+def update_user_input_list(input_data, user_input_list):
+    """
+    更新用户输入列表，确保括号外的文本不重复。
+    如果找到括号外文本相同的旧数据，将其删除。
+    然后将新数据添加到列表前面，并保持列表长度不超过30。
+    """
+    if not isinstance(input_data, str) or input_data.strip() == '':  # 空字符串或非字符串输入
+        return user_input_list  # 直接返回原列表，不做更改
+
+    input_data_outside_brackets = extract_outside_brackets_corrected(input_data)
+    if input_data_outside_brackets == '':  # 如果括号外文本为空，则不添加
+        return user_input_list
+
+    # 清理列表中的空字符串
+    user_input_list = [item for item in user_input_list if item.strip() != '']
+
+    # 移除任何括号外文本相同的旧数据
+    user_input_list = [item for item in user_input_list if
+                       extract_outside_brackets_corrected(item) != input_data_outside_brackets]
+
+    # 维持列表长度不超过30
+    if len(user_input_list) >= 29:  # 因为下一步就要添加新元素，所以这里是29
+        user_input_list.pop(-1)
+
+    user_input_list.insert(0, input_data)
+
+    return user_input_list
 
 
 # 监听键盘事件
@@ -829,7 +860,7 @@ def main():
 
     font = js_cfg['font'][0] + ' '
     font_size = js_cfg['font_size']
-    rtt_cur_version = 'v2.1.0'
+    rtt_cur_version = 'v2.2.0'
 
     sec1_layout = [[sg.T('过滤', font=font), sg.In(js_cfg['filter'], key='filter', size=(50, 1)),
                     sg.Checkbox('打开过滤器', default=False, key='filter_en', enable_events=True, font=font),
@@ -1001,15 +1032,10 @@ def main():
         elif event == 'tx_data':
             if hw_obj.hw_is_open():
                 input_data = window['data_input'].get()
-                if input_data not in js_cfg['user_input_data']:
-                    # 删除空字符串
-                    js_cfg['user_input_data'] = [item for item in js_cfg['user_input_data'] if item != '']
-                    if len(js_cfg['user_input_data']) >= 30:
-                        js_cfg['user_input_data'].pop(-1)
-                    js_cfg['user_input_data'].insert(0, input_data)
-                    with open('config.json', 'w') as f:
-                        json.dump(js_cfg, f, indent=4)
+                js_cfg['user_input_data'] = update_user_input_list(input_data, js_cfg['user_input_data'])
                 window['history_data'].update(input_data, values=js_cfg['user_input_data'])
+                with open('config.json', 'w') as f:
+                    json.dump(js_cfg, f, indent=4)
                 if window['tx_data_type'].get() == 'HEX':
                     try:
                         print([int(i, 16) for i in input_data.split(' ')])

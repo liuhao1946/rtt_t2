@@ -83,4 +83,4 @@ def mouseReleaseEvent(self, ev):
 
 ## 软件打包
 使用pyinstaller 5.1打包，打包命令：
->pyinstaller --exclude scipy -wD tool.ico rtt_t2.py
+>pyinstaller --exclude scipy -wD -i tool.ico rtt_t2.py

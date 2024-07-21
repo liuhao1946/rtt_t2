@@ -11,8 +11,8 @@
         "SWD"
     ],
     "jk_con_reset": true,
-    "jk_speed": "4000",
-    "hw_sel": "2",
+    "jk_speed": 8000,
+    "hw_sel": "1",
     "filter": "",
     "filter_en": false,
     "font": [
@@ -37,8 +37,8 @@
         9600,
         19200
     ],
-    "ser_com": "COM4",
-    "ser_des": "JLink CDC UART Port (COM4)",
+    "ser_com": "COM1",
+    "ser_des": "\u901a\u4fe1\u7aef\u53e3 (COM1)",
     "char_format": "asc",
     "update_flag": true,
     "line_break": "\n",

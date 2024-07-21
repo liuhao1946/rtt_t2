@@ -178,7 +178,7 @@ def hw_config_dialog(js_cfg):
     # jlink配置
     jk_layout = [[sg.Combo(chip_list, chip_list[0], readonly=True, key='chip', size=(18, 1)),
                   sg.Text('SN'), sg.Input('', readonly=True, key='jk_sn', size=(15, 1)),
-                  sg.T('speed(kHz)'), sg.In(jk_speed, key='jk_sn', size=(5, 1)),
+                  sg.T('speed(kHz)'), sg.In(jk_speed, key='jk_speed', size=(5, 1)),
                   sg.Checkbox('连接时复位', default=js_cfg['jk_con_reset'], key='jk_reset', pad=((40, 10), (1, 1)),
                               font=js_cfg['font'][0])],
                  [sg.T('_SEGGER_RTT地址搜索范围(格式:起始地址 范围大小，比如:0x20000000 0x4000)：')],
@@ -296,6 +296,7 @@ def hw_config_dialog(js_cfg):
                 else:
                     js_cfg['rtt_block_address'] = ['', '']
 
+                js_cfg['jk_speed'] = int(cfg_window['jk_speed'].get())
                 js_cfg['y_range'][0] = int(cfg_window['y_min'].get())
                 js_cfg['y_range'][1] = int(cfg_window['y_max'].get())
                 js_cfg['y_label_text'] = cfg_window['y_label_text'].get()
@@ -638,7 +639,7 @@ def jk_connect(win, obj, jk_cfg):
         try:
             jk_con_reset = jk_cfg['jk_con_reset']
             try:
-                jk_speed = int(jk_cfg['jk_speed'])
+                jk_speed = jk_cfg['jk_speed']
             except:
                 jk_speed = 4000
             start_address = None

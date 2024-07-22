@@ -53,13 +53,18 @@ class HardWareBase:
     def hw_set_char_format(self, c_format):
         self.char_format = c_format
 
+    def hw_add_timestamp(self, s):
+        s = s.replace('\r\n', '\n').replace('\r', '')  # 将所有的\r\n 和 \r 转换为 ''
+        t = '[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[0:-3] + '] '
+        lines = s.splitlines(keepends=True)
+        s = ''.join([t + line for line in lines])
+        return s
+
     def hw_data_handle(self, s1):
         self.rx_str += s1
         if len(s1) > 0:
             if self.timestamp_open:
-                t = '[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[0:-3] + '] '
-                lines = s1.splitlines(keepends=True)
-                s1 = ''.join([t + line for line in lines])
+                s1 = self.hw_add_timestamp(s1)
             self.data_queue.put(s1)
 
         s_total_len = len(self.rx_str)

@@ -11,7 +11,7 @@
         "SWD"
     ],
     "jk_con_reset": true,
-    "jk_speed": 8000,
+    "jk_speed": 4000,
     "hw_sel": "1",
     "filter": "",
     "filter_en": false,

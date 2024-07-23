@@ -38,6 +38,7 @@ class HardWareBase:
         self.char_format = char_format
         self.data_queue = Queue()
         self.M_cb = []
+        self.remain_s1 = ''
         self.thread_run_interval_s = read_rtt_data_interval_s
         self.tag_detect_timeout = self.tag_detect_timeout_init = tag_detect_timeout_s / self.thread_run_interval_s
 
@@ -53,18 +54,31 @@ class HardWareBase:
     def hw_set_char_format(self, c_format):
         self.char_format = c_format
 
-    def hw_add_timestamp(self, s):
-        s = s.replace('\r\n', '\n').replace('\r', '')  # 将所有的\r\n 和 \r 转换为 ''
-        t = '[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[0:-3] + '] '
-        lines = s.splitlines(keepends=True)
-        s = ''.join([t + line for line in lines])
-        return s
+    def hw_add_timestamp(self, s1):
+        s1 = s1.replace('\r\n', '\n').replace('\r', '')  # 标准化换行符
+        timestamp = '[' + datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + '] '
+        lines = s1.splitlines(keepends=True)  # 保留行分隔符
+        timestamped_lines = []
+        buffer = ""
+
+        for line in lines:
+            if line.endswith('\n'):
+                if buffer:
+                    line = buffer + line  # 合并前一部分不完整的行
+                    buffer = ""
+                timestamped_lines.append(timestamp + line)
+            else:
+                buffer += line  # 将不完整的行暂时存放在缓冲区
+
+        return ''.join(timestamped_lines), buffer
 
     def hw_data_handle(self, s1):
         self.rx_str += s1
         if len(s1) > 0:
-            if self.timestamp_open:
-                s1 = self.hw_add_timestamp(s1)
+            if not self.timestamp_open:
+                self.remain_s1 = ''
+            else:
+                s1, self.remain_s1 = self.hw_add_timestamp(self.remain_s1+s1)
             self.data_queue.put(s1)
 
         s_total_len = len(self.rx_str)
@@ -103,6 +117,7 @@ class HardWareBase:
 
     def hw_para_init(self):
         self.rx_str = ''
+        self.remain_s1 = ''
         self.data_queue.queue.clear()
 
     def get_raw_data_state(self):

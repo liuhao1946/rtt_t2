@@ -22,6 +22,7 @@ class BDS_Jlink(HardWareBase):
         self.rtt_is_start = False
         self.clk = 0
         self.bytes_data = b''
+        self.last_successful_sn = None  # 存储上一次成功连接的序列号
 
     def find_rtt_address(self, start_address, range_size):
         if start_address is not None:
@@ -31,13 +32,22 @@ class BDS_Jlink(HardWareBase):
         else:
             return -1
 
-    def hw_open(self, speed=4000, chip='nRF52840_xxAA', reset_flag=True, start_address=None, range_size=0):
+    def hw_open(self, speed=4000, chip='nRF52840_xxAA', reset_flag=True, start_address=None, range_size=0, sn_no=None):
         try:
-            # self.rtt_data_queue.queue.clear()
             self.hw_para_init()
             self.speed = speed
             self.chip = chip
-            self.jlink.open()
+
+            # 如果没有提供 sn_no，先尝试使用上一次成功的序列号
+            if sn_no is None and self.last_successful_sn is not None:
+                try:
+                    self.jlink.open(serial_no=self.last_successful_sn)
+                except pylink.errors.JLinkException:
+                    # 如果使用上一次的序列号失败，则使用默认参数重试
+                    self.jlink.open()
+            else:
+                self.jlink.open(serial_no=sn_no)
+
             self.jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
             self.jlink.set_speed(self.speed)
             self.jlink.connect(self.chip)
@@ -52,15 +62,17 @@ class BDS_Jlink(HardWareBase):
                 print('找到_SEG RTT. 起始地址:%x, 地址偏移量:%d' % (start_address, offset))
 
             if self.jlink.connected():
-                # TODO:考虑再次阅读这个函数
-                # self.jlink.rtt_control()
                 self.jlink.swo_flush()
                 self.jlink.rtt_start(start_address)
                 self.rtt_is_start = True
                 print('jlink connect success...')
+                # 保存成功连接的序列号
+                self.last_successful_sn = self.jlink.serial_number
+                return True  # 返回连接成功的标志
         except pylink.errors.JLinkException as e:
             self.err_cb('J_Link:%s\n' % e)
             print(e)
+        return False  # 返回连接失败的标志
 
     def hw_close(self):
         if self.jlink.opened():

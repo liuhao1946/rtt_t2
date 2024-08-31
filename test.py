@@ -1,61 +1,99 @@
-import datetime
-import time
+import PySimpleGUI as sg
+import tkinter as tk
+from tkinter import ttk
+import json
+import os
 
+# 模拟配置文件
+CONFIG_FILE = 'test_config.json'
 
-def add_timestamp1_v1(s1):
-    s1 = s1.replace('\r\n', '\n').replace('\r', '')  # 标准化换行符
-    timestamp = '[' + datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + '] '
-    lines = s1.splitlines(keepends=True)  # 保留行分隔符
-    result = []
-    buffer = ""
+def load_config():
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, 'r') as f:
+            return json.load(f)
+    return {'user_input_data': ['测试数据1', '测试数据2', '测试数据3']}
 
-    for line in lines:
-        if line.endswith('\n'):
-            if buffer:
-                line = buffer + line  # 合并前一部分不完整的行
-                buffer = ""
-            result.append(timestamp + line)
-        else:
-            buffer += line  # 将不完整的行暂时存放在缓冲区
-            result.append(buffer)  # 直接将不完整行加入结果
+def save_config(config):
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=4)
 
-    return ''.join(result)
+def create_custom_combo(window, key, values, default_value, size):
+    combo = ttk.Combobox(window[key].Widget.master, values=values, width=size[0])
+    combo.set(default_value)
+    
+    # 创建右键菜单
+    context_menu = tk.Menu(window[key].Widget.master, tearoff=0)
+    context_menu.add_command(label="删除当前项")
+    
+    def show_menu(event):
+        context_menu.post(event.x_root, event.y_root)
+    
+    combo.bind("<Button-3>", show_menu)
+    
+    # 替换PySimpleGUI的Combo为自定义的ttk.Combobox
+    parent = window[key].Widget.master
+    window[key].Widget.destroy()
+    window[key].Widget = combo
+    
+    # 使用pack布局管理器
+    combo.pack(expand=True, fill='x')
+    
+    return combo, context_menu
 
+def main():
+    sg.theme('DefaultNoMoreNagging')
+    
+    # 加载配置
+    js_cfg = load_config()
 
-def add_timestamp1_v2(s1):
-    s1 = s1.replace('\r\n', '\n').replace('\r', '')  # 标准化换行符
-    timestamp = '[' + datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + '] '
-    lines = s1.splitlines(keepends=True)  # 保留行分隔符
-    timestamped_lines = []
-    buffer = []
+    layout = [
+        [sg.Text('输入数据:'), sg.Input(key='data_input', size=(30, 1))],
+        [sg.Button('添加到历史', key='add_to_history')],
+        [sg.Text('历史数据:'),
+         sg.Combo(js_cfg['user_input_data'], default_value=js_cfg['user_input_data'][0] if js_cfg['user_input_data'] else '',
+                  key='history_data', size=(30, 1), enable_events=True)],
+        [sg.Multiline(size=(50, 10), key='output', disabled=True)],
+        [sg.Button('退出')]
+    ]
 
-    for line in lines:
-        if line.endswith('\n'):
-            if buffer:
-                buffer.append(line)  # 合并前一部分不完整的行
-                timestamped_lines.append(timestamp + ''.join(buffer))
-                buffer = []
-            else:
-                timestamped_lines.append(timestamp + line)
-        else:
-            buffer.append(line)  # 将不完整的行暂时存放在缓冲区
+    window = sg.Window('历史数据测试', layout, finalize=True)
 
-    remainder = ''.join(buffer)
+    # 创建自定义的Combobox和右键菜单
+    combo, context_menu = create_custom_combo(window, 'history_data', js_cfg['user_input_data'],
+                                              js_cfg['user_input_data'][0] if js_cfg['user_input_data'] else '',
+                                              (30, 1))
 
-    return ''.join(timestamped_lines), remainder
+    def delete_current_item():
+        current_value = combo.get()
+        if current_value in js_cfg['user_input_data']:
+            js_cfg['user_input_data'].remove(current_value)
+            combo['values'] = js_cfg['user_input_data']
+            combo.set(js_cfg['user_input_data'][0] if js_cfg['user_input_data'] else '')
+            save_config(js_cfg)
+            window['output'].print(f'已删除: {current_value}')
 
+    context_menu.entryconfigure("删除当前项", command=delete_current_item)
 
-# 测试数据
-s1 = "这是第一行完整的字符串\n这是第二行不完整的字符串" * 1000000
+    while True:
+        event, values = window.read()
 
-# 测试第一个方案
-start_time = time.time()
-add_timestamp1_v1(s1)
-end_time = time.time()
-print("First version time:", end_time - start_time)
+        if event in (sg.WINDOW_CLOSED, '退出'):
+            break
 
-# 测试第二个方案
-start_time = time.time()
-add_timestamp1_v2(s1)
-end_time = time.time()
-print("Second version time:", end_time - start_time)
+        if event == 'add_to_history':
+            new_data = values['data_input'].strip()
+            if new_data and new_data not in js_cfg['user_input_data']:
+                js_cfg['user_input_data'].insert(0, new_data)  # 添加到列表开头
+                combo['values'] = js_cfg['user_input_data']
+                combo.set(new_data)
+                save_config(js_cfg)
+                window['output'].print(f'已添加新数据: {new_data}')
+            window['data_input'].update('')  # 清空输入框
+
+        if event == 'history_data':
+            window['data_input'].update(combo.get())
+
+    window.close()
+
+if __name__ == '__main__':
+    main()

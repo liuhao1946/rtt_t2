@@ -16,6 +16,7 @@ import requests
 import webbrowser
 import keyboard
 import tkinter as tk
+from tkinter import ttk
 
 global window
 global download_window
@@ -287,8 +288,8 @@ def hw_config_dialog(js_cfg):
                 if cfg_window['rtt_block_address'].get() != '':
                     rtt_block_address = extract_and_convert_hex(cfg_window['rtt_block_address'].get())
                     if rtt_block_address is None:
-                        sg.popup("请输入正确的起始搜索地址以及范围。十六进制字符串必须以 '0x'或者'0X' 开头，两个值之间用空格隔开,"
-                                 "起始地址必须4字节对齐，比如:\"0x20000000\" \"0x1000\"")
+                        sg.popup("请输入正确的起始搜索地址以及范围。十六进制字符串必须以 '0x'或者'0X' 开头, 两个值之间用空格隔开,"
+                                 "起始地址必须4字节对齐, 比如:\"0x20000000\" \"0x1000\"")
                         continue
                     else:
                         js_cfg['rtt_block_address'] = rtt_block_address
@@ -411,9 +412,9 @@ def update_reminder_dialog(font, latest_release):
         [sg.Text('github下载地址:'),
          sg.Text('https://github.com/liuhao1946/rtt_t2/releases', key='github_adr', enable_events=True)],
         [sg.Frame('下载进度', progress_layout, key='progress', font=font)],
-        [sg.Button('立刻更新', key='download', font=font),
-         sg.Button('下次更新', key='next_download', font=font),
-         ]
+        [sg.Column([[sg.Button('立刻更新', key='download', font=font),
+                     sg.Button('下次更新', key='next_download', font=font)]], 
+                   justification='right', element_justification='right', expand_x=True)],
     ]
 
     s = ''
@@ -806,11 +807,18 @@ def get_next_item(lst, current_index, direction):
 
 # 定义搜索窗口的创建函数
 def create_find_window(font=None):
-    find_layout = [[sg.Input(key='find_key', font=font, size=(50, 1)),
-                    sg.Button("查找下一个", font=font, pad=((10, 10), (5, 5)), key='find_next',
+    button_column = sg.Column([
+        [sg.Push(), sg.Button("查找下一个", font=font, pad=(5, 5), key='find_next',
                               button_color=('grey0', 'grey100'))],
-                   [sg.Button("查找上一个", font=font, pad=((473, 10), (5, 5)), key='find_pre',
-                              button_color=('grey0', 'grey100'))]]
+        [sg.Push(), sg.Button("查找上一个", font=font, pad=(5, 5), key='find_pre',
+                              button_color=('grey0', 'grey100'))]
+    ])
+
+    find_layout = [
+        [sg.Input(key='find_key', font=font, size=(50, 1)),
+         button_column]
+    ]
+
     return sg.Window("查找内容", find_layout, modal=False, font=font, finalize=True, icon=APP_ICON)
 
 
@@ -849,6 +857,75 @@ def find_previous(widget, keyword, start='end', end='1.0'):
     return None
 
 
+def create_custom_combo(window, key, values, default_value, size):
+    combo = ttk.Combobox(window[key].Widget.master, values=values, width=size[0], state="readonly")
+    combo.set(default_value)
+    
+    # 创建右键菜单
+    context_menu = tk.Menu(window[key].Widget.master, tearoff=0)
+    context_menu.add_command(label="删除当前项")
+    
+    def show_menu(event):
+        context_menu.post(event.x_root, event.y_root)
+    
+    combo.bind("<Button-3>", show_menu)
+    
+    # 替换PySimpleGUI的Combo为自定义的ttk.Combobox
+    parent = window[key].Widget.master
+    window[key].Widget.destroy()
+    window[key].Widget = combo
+    
+    # 使用pack布局管理器
+    combo.pack(expand=True, fill='x')
+    
+    return combo, context_menu
+
+
+def save_config(config):
+    with open('config.json', 'w') as f:
+        json.dump(config, f, indent=4)
+
+
+def jk_connect(win, obj, jk_cfg):
+    if win['connect'].get_text() == 'J_Link连接':
+        try:
+            jk_con_reset = jk_cfg['jk_con_reset']
+            try:
+                jk_speed = jk_cfg['jk_speed']
+            except:
+                jk_speed = 4000
+            start_address = None
+            range_size = 0
+            if jk_cfg['rtt_block_address'][0] != '' and jk_cfg['rtt_block_address'][1] != '':
+                start_address = int(jk_cfg['rtt_block_address'][0], 16)
+                range_size = int(jk_cfg['rtt_block_address'][1], 16)
+                print(hex(start_address), hex(range_size))
+            connection_success = obj.hw_open(speed=jk_speed, chip=jk_cfg['jk_chip'][0], reset_flag=jk_con_reset,
+                                             start_address=start_address, range_size=range_size)
+            if connection_success:
+                win['connect'].update('J_Link断开', button_color=('grey0', 'green4'))
+                win[DB_OUT].write('[J_Link LOG]sn:%d\n' % obj.get_hw_serial_number())
+                win[DB_OUT].write('[J_Link LOG]过滤配置:%s\n' % ','.join(jk_cfg['filter'].split('&&')))
+                win[DB_OUT].write('[J_Link LOG]芯片型号:%s\n' % jk_cfg['jk_chip'][0])
+                if jk_con_reset:
+                    win[DB_OUT].write('[J_Link LOG]J_Link复位MCU.\n')
+                else:
+                    win[DB_OUT].write('[J_Link LOG]J_Link没有复位MCU.\n')
+                log.info('J_Link连接成功')
+            else:
+                win[DB_OUT].write('[J_Link LOG]J_Link打开失败\n')
+        except Exception as e:
+            obj.hw_close()
+            log.info('J_Link打开失败' + str(e))
+            win[DB_OUT].write('[J_Link LOG]Error:%s\n' % e)
+            win['connect'].update('J_Link连接')
+    else:
+        obj.hw_close()
+        win['connect'].update('J_Link连接', button_color=('grey0', 'grey100'))
+        log.info('J_Link断开连接')
+        time.sleep(0.1)
+
+
 def main():
     multiprocessing.freeze_support()
 
@@ -861,7 +938,7 @@ def main():
 
     font = js_cfg['font'][0] + ' '
     font_size = js_cfg['font_size']
-    rtt_cur_version = 'v2.3.0'
+    rtt_cur_version = 'v2.4.0'
 
     sec1_layout = [[sg.T('过滤', font=font), sg.In(js_cfg['filter'], key='filter', size=(50, 1)),
                     sg.Checkbox('打开过滤器', default=False, key='filter_en', enable_events=True, font=font),
@@ -894,10 +971,11 @@ def main():
                                                                            enable_events=False),
                ],
               [sg.T('历史数据'),
-               sg.Combo(js_cfg['user_input_data'], js_cfg['user_input_data'][0], pad=((35, 5), (1, 1)),
+                sg.Combo(js_cfg['user_input_data'], 
+                        default_value=(js_cfg['user_input_data'][0] if js_cfg['user_input_data'] else ''), 
+                        pad=((35, 5), (1, 1)),
                         readonly=True, key='history_data', size=(115, 1), enable_events=True)
-               ]
-              ]
+              ]]
 
     global window
     global hw_obj
@@ -945,6 +1023,25 @@ def main():
     last_highlight_end = '1.0'
     search_direction = 'next'
 
+    # 创建自定义的Combobox和右键菜单
+    combo, context_menu = create_custom_combo(window, 'history_data', js_cfg['user_input_data'],
+                                              js_cfg['user_input_data'][0] if js_cfg['user_input_data'] else '',
+                                              (115, 1))
+    
+    def delete_current_item():
+        current_value = combo.get()
+        if current_value in js_cfg['user_input_data']:
+            js_cfg['user_input_data'].remove(current_value)
+            combo['values'] = js_cfg['user_input_data']
+            if js_cfg['user_input_data']:
+                combo.set(js_cfg['user_input_data'][0])
+            else:
+                combo.set('')
+            save_config(js_cfg)
+            window[DB_OUT].write(f'[历史数据] 已删除: {current_value}\n')
+
+    context_menu.entryconfigure("删除当前项", command=delete_current_item)
+
     while True:
         win, event, values = sg.read_all_windows(timeout=150)
 
@@ -984,6 +1081,9 @@ def main():
         elif event == 'hw_warn':
             window[DB_OUT].write('[BDS LOG] ' + values['hw_warn'])
             print('warn:' + values['hw_warn'])
+        elif event == 'history_data':
+            window['data_input'].update(combo.get())
+
         elif event == 'connect':
             wv.wave_cmd('wave reset')
             if window['connect'].get_text().find('J_Link') >= 0:
@@ -1034,9 +1134,9 @@ def main():
             if hw_obj.hw_is_open():
                 input_data = window['data_input'].get()
                 js_cfg['user_input_data'] = update_user_input_list(input_data, js_cfg['user_input_data'])
-                window['history_data'].update(input_data, values=js_cfg['user_input_data'])
-                with open('config.json', 'w') as f:
-                    json.dump(js_cfg, f, indent=4)
+                combo['values'] = js_cfg['user_input_data']
+                combo.set(input_data)
+                save_config(js_cfg)
                 if window['tx_data_type'].get() == 'HEX':
                     try:
                         print([int(i, 16) for i in input_data.split(' ')])
@@ -1053,7 +1153,9 @@ def main():
             else:
                 sg.popup('请先连接硬件', icon=APP_ICON)
         elif event == 'history_data':
-            window['data_input'].update(window['history_data'].get())
+            window['data_input'].update(combo.get())
+        elif event == '删除当前项':
+            delete_current_item()
         elif event is not None and event.startswith('sec1_key'):
             window['sec1_key'].update(visible=not window['sec1_key'].visible)
             window['sec1_key' + '-BUTTON-'].update(

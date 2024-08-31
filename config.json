@@ -12,7 +12,7 @@
     ],
     "jk_con_reset": true,
     "jk_speed": 4000,
-    "hw_sel": "2",
+    "hw_sel": "1",
     "filter": "",
     "filter_en": false,
     "font": [
@@ -22,7 +22,7 @@
     "font_size": "12",
     "tx_line": "\n",
     "user_input_data": [
-        ""
+        "123"
     ],
     "curves_name": "X&&Y&&Z",
     "y_range": [
@@ -38,8 +38,8 @@
         9600,
         19200
     ],
-    "ser_com": "COM7",
-    "ser_des": "USB Serial Port (COM7)",
+    "ser_com": "COM1",
+    "ser_des": "\u901a\u4fe1\u7aef\u53e3 (COM1)",
     "char_format": "asc",
     "update_flag": true,
     "line_break": "\n",

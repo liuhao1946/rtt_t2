@@ -1038,7 +1038,7 @@ def main():
             else:
                 combo.set('')
             save_config(js_cfg)
-            window[DB_OUT].write(f'[历史数据] 已删除: {current_value}\n')
+            # window[DB_OUT].write(f'[历史数据] 已删除: {current_value}\n')
 
     context_menu.entryconfigure("删除当前项", command=delete_current_item)
 

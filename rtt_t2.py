@@ -17,6 +17,7 @@ import webbrowser
 import keyboard
 import tkinter as tk
 from tkinter import ttk
+import config_manager
 
 global window
 global download_window
@@ -929,12 +930,13 @@ def jk_connect(win, obj, jk_cfg):
 def main():
     multiprocessing.freeze_support()
 
+    log_dir = config_manager.initialize_app_environment()
+
     log.basicConfig(filename='rtt.log', filemode='w', level=log.INFO, format='%(asctime)s %(message)s',
                     datefmt='%Y/%m/%d %I:%M:%S')
 
     # 读取json配置文件
-    with open('config.json', 'r') as f:
-        js_cfg = json.load(f)
+    js_cfg = config_manager.load_config()
 
     font = js_cfg['font'][0] + ' '
     font_size = js_cfg['font_size']
@@ -1037,10 +1039,23 @@ def main():
                 combo.set(js_cfg['user_input_data'][0])
             else:
                 combo.set('')
-            save_config(js_cfg)
+            config_manager.save_config(js_cfg)
             # window[DB_OUT].write(f'[历史数据] 已删除: {current_value}\n')
 
     context_menu.entryconfigure("删除当前项", command=delete_current_item)
+
+    # 修改保存数据的部分
+    def save_data_to_file(data, prefix='log'):
+        try:
+            log_dir = config_manager.ensure_log_dir()  # 确保日志目录存在
+            file_name = os.path.join(log_dir, f'{prefix}_{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}.txt')
+            with open(file_name, 'w', encoding='utf-8') as f:
+                f.write(data)
+            return file_name
+        except Exception as e:
+            print(f"保存文件时发生错误: {e}")
+            # 可以在这里添加更多的错误处理逻辑，比如显示一个错误对话框
+            return None
 
     while True:
         win, event, values = sg.read_all_windows(timeout=150)
@@ -1105,8 +1120,7 @@ def main():
         elif event == 'real_time_save_data':
             if window['real_time_save_data'].get_text() == '实时保存数据':
                 window['real_time_save_data'].update('关闭实时保存数据', button_color=('grey0', 'green4'))
-                real_time_save_file_name = 'aaa_log\\' + 'real_time_log_' + datetime.datetime.now().strftime(
-                    '%Y-%m-%d-%H-%M-%S') + '.txt'
+                real_time_save_file_name = save_data_to_file('', prefix='real_time_log')
             else:
                 window['real_time_save_data'].update('实时保存数据', button_color=('grey0', 'grey100'))
         elif event == 'open_timestamp':
@@ -1118,11 +1132,9 @@ def main():
                 window['open_timestamp'].update('打开时间戳', button_color=('grey0', 'grey100'))
         elif event == 'save_all_data':
             if window[DB_OUT].get() != '':
-                file_name = 'aaa_log\\' + 'log_' + datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S') + '.txt'
-                with open(file_name, 'w', encoding='utf-8') as f:
-                    f.write(window[DB_OUT].get())
-                    os.startfile(file_name)
-                    window[DB_OUT].update('')
+                file_name = save_data_to_file(window[DB_OUT].get())
+                os.startfile(file_name)
+                window[DB_OUT].update('')
             else:
                 sg.popup('[Error]无数据!!!', icon=APP_ICON)
         elif event == '滚动到最底端':
@@ -1136,7 +1148,7 @@ def main():
                 js_cfg['user_input_data'] = update_user_input_list(input_data, js_cfg['user_input_data'])
                 combo['values'] = js_cfg['user_input_data']
                 combo.set(input_data)
-                save_config(js_cfg)
+                config_manager.save_config(js_cfg)
                 if window['tx_data_type'].get() == 'HEX':
                     try:
                         print([int(i, 16) for i in input_data.split(' ')])
@@ -1171,8 +1183,7 @@ def main():
             else:
                 js_cfg['filter'] = window['filter'].get()
                 js_cfg['filter_en'] = False
-            with open('config.json', 'w') as f:
-                json.dump(js_cfg, f, indent=4)
+            config_manager.save_config(js_cfg)
         elif event == 'config':
             if not hw_obj.hw_is_open():
                 err_code = hw_config_dialog(js_cfg)

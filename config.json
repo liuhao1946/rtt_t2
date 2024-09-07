@@ -22,6 +22,9 @@
     "font_size": "12",
     "tx_line": "\n",
     "user_input_data": [
+        "1235658558asdfsd",
+        "1235658558",
+        "12356",
         "123"
     ],
     "curves_name": "X&&Y&&Z",
@@ -39,7 +42,7 @@
         19200
     ],
     "ser_com": "COM1",
-    "ser_des": "\u901a\u4fe1\u7aef\u53e3 (COM1)",
+    "ser_des": "通信端口 (COM1)",
     "char_format": "asc",
     "update_flag": true,
     "line_break": "\n",

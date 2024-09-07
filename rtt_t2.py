@@ -18,6 +18,7 @@ import keyboard
 import tkinter as tk
 from tkinter import ttk
 import config_manager
+import traceback
 
 global window
 global download_window
@@ -537,10 +538,16 @@ def log_fileter(log_data, filter_pat, remain_str='', only_exclude=True):
 
 
 def db_data_check_error(s):
+    """
+    检查字符串s中是否存在超过100个错误字符
+
+    :param s: 要检查的字符串
+    :return: 如果错误字符数量超过100，返回True，否则返回False
+    """
     err_cnt = 0
     err_chr = chr(0)
     for v in s:
-        # ~-127
+        # 检查字符是否大于'~'或等于err_chr
         if v > '~' or v == err_chr:
             err_cnt += 1
             if err_cnt > 100:
@@ -769,29 +776,37 @@ def listen_for_arrow_keys():
 
     while True:
         try:
-            if keyboard.is_pressed('up') and last_pressed != 'up':
+            current_key = keyboard.read_key()
+            
+            if current_key == 'up' and last_pressed != 'up':
                 window.write_event_value('KEY_UP', '')
                 last_pressed = 'up'
-                time.sleep(debounce_time)  # 等待去抖时间后再继续
-            elif keyboard.is_pressed('down') and last_pressed != 'down':
+                print('up')
+            elif current_key == 'down' and last_pressed != 'down':
                 window.write_event_value('KEY_DOWN', '')
                 last_pressed = 'down'
-                time.sleep(debounce_time)  # 等待去抖时间后再继续
-            elif keyboard.is_pressed('ctrl+f') and last_pressed != 'ctrl+f':
+                print('down')
+            elif current_key == 'f' and keyboard.is_pressed('ctrl') and last_pressed != 'ctrl+f':
                 window.write_event_value('CTRL_F', '')
                 last_pressed = 'ctrl+f'
-                time.sleep(debounce_time)
+            elif current_key in ['numpad8', 'numpad2']:
+                print(f'Numpad key pressed: {current_key}')
             else:
-                last_pressed = None  # 如果没有按键被按下，重置last_pressed
-        except:
-            pass
+                last_pressed = None
+
+            time.sleep(debounce_time)
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
         time.sleep(0.05)
 
 
 def get_next_item(lst, current_index, direction):
     if not lst:  # 检查列表是否为空
-        return None
+        return None, None  # 返回两个 None 值
+
+    if current_index is None:
+        current_index = 0  # 如果当前索引为 None，设置为 0
 
     if direction == 'KEY_UP':
         # 上一个元素的索引，如果当前是第一个元素，则跳转到列表的最后一个元素
@@ -800,8 +815,8 @@ def get_next_item(lst, current_index, direction):
         # 下一个元素的索引，如果当前是最后一个元素，则跳转到列表的第一个元素
         new_index = (current_index + 1) % len(lst)
     else:
-        # 如果方向不是'Up'或'Down'，则返回None
-        return None
+        # 如果方向不是'Up'或'Down'，则返回 None
+        return None, None
 
     return lst[new_index], new_index
 
@@ -870,6 +885,12 @@ def create_custom_combo(window, key, values, default_value, size):
         context_menu.post(event.x_root, event.y_root)
     
     combo.bind("<Button-3>", show_menu)
+    
+    # 添加选择事件绑定
+    def on_select(event):
+        window.write_event_value(key, combo.get())
+    
+    combo.bind("<<ComboboxSelected>>", on_select)
     
     # 替换PySimpleGUI的Combo为自定义的ttk.Combobox
     parent = window[key].Widget.master
@@ -1056,7 +1077,7 @@ def main():
             print(f"保存文件时发生错误: {e}")
             # 可以在这里添加更多的错误处理逻辑，比如显示一个错误对话框
             return None
-
+        
     while True:
         win, event, values = sg.read_all_windows(timeout=150)
 
@@ -1096,9 +1117,12 @@ def main():
         elif event == 'hw_warn':
             window[DB_OUT].write('[BDS LOG] ' + values['hw_warn'])
             print('warn:' + values['hw_warn'])
-        elif event == 'history_data':
-            window['data_input'].update(combo.get())
 
+        elif event == 'history_data':
+            selected_data = values['history_data']
+            if selected_data:
+                window['data_input'].update(selected_data)
+            print("history_data event triggered")
         elif event == 'connect':
             wv.wave_cmd('wave reset')
             if window['connect'].get_text().find('J_Link') >= 0:
@@ -1166,6 +1190,7 @@ def main():
                 sg.popup('请先连接硬件', icon=APP_ICON)
         elif event == 'history_data':
             window['data_input'].update(combo.get())
+            print("history_data")
         elif event == '删除当前项':
             delete_current_item()
         elif event is not None and event.startswith('sec1_key'):
@@ -1216,8 +1241,10 @@ def main():
                 break
         elif data_input_focus_state and (event == 'KEY_UP' or event == 'KEY_DOWN'):
             new_item, new_index = get_next_item(js_cfg['user_input_data'], new_index, event)
-            if new_item is not None and new_item != '':
+            if new_item is not None:
                 window['data_input'].update(new_item)
+            else:
+                sg.popup_no_wait('没有历史数据', icon=APP_ICON)
         elif event == 'CTRL_F':
             if not find_window and text_focus_state:
                 # 创建一个搜索窗体

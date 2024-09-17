@@ -772,33 +772,47 @@ def update_user_input_list(input_data, user_input_list):
 # 监听键盘事件
 def listen_for_arrow_keys():
     last_pressed = None
-    debounce_time = 0.2  # 设置去抖时间，例如0.2秒
+    last_time = time.time()
+    debounce_time = 0.02  # 设置去抖时间，例如0.2秒
+    repeat_time = 0.5  # 持续按键超过500ms时再次发送事件
 
     while True:
         try:
             current_key = keyboard.read_key()
+            current_time = time.time()
+            # print(current_key,  keyboard.is_pressed('ctrl'))
             
-            if current_key == 'up' and last_pressed != 'up':
-                window.write_event_value('KEY_UP', '')
-                last_pressed = 'up'
-                print('up')
-            elif current_key == 'down' and last_pressed != 'down':
-                window.write_event_value('KEY_DOWN', '')
-                last_pressed = 'down'
-                print('down')
-            elif current_key == 'f' and keyboard.is_pressed('ctrl') and last_pressed != 'ctrl+f':
-                window.write_event_value('CTRL_F', '')
-                last_pressed = 'ctrl+f'
-            elif current_key in ['numpad8', 'numpad2']:
-                print(f'Numpad key pressed: {current_key}')
+            if current_key == 'up':
+                if last_pressed != 'up' or (last_pressed == 'up' and (current_time - last_time) > repeat_time):
+                    window.write_event_value('KEY_UP', '')
+                    last_pressed = 'up'
+                    last_time = current_time
+                    print('up')
+            elif current_key == 'down':
+                if last_pressed != 'down' or (last_pressed == 'down' and (current_time - last_time) > repeat_time):
+                    window.write_event_value('KEY_DOWN', '')
+                    last_pressed = 'down'
+                    last_time = current_time
+                    print('down')
+            elif current_key == 'f' and keyboard.is_pressed('ctrl'):
+                if last_pressed != 'ctrl+f':
+                    window.write_event_value('CTRL_F', '')
+                    last_pressed = 'ctrl+f'
+                    last_time = current_time
             else:
+                last_pressed = None
+
+            # 检查按键是否被释放，如果是则重置 last_pressed
+            if not keyboard.is_pressed('up') and last_pressed == 'up':
+                last_pressed = None
+            elif not keyboard.is_pressed('down') and last_pressed == 'down':
+                last_pressed = None
+            elif not keyboard.is_pressed('ctrl') and last_pressed == 'ctrl+f':
                 last_pressed = None
 
             time.sleep(debounce_time)
         except Exception as e:
             print(f"An error occurred: {e}")
-
-        time.sleep(0.05)
 
 
 def get_next_item(lst, current_index, direction):
@@ -961,7 +975,7 @@ def main():
 
     font = js_cfg['font'][0] + ' '
     font_size = js_cfg['font_size']
-    rtt_cur_version = 'v2.5.0'
+    rtt_cur_version = 'v2.5.2'
 
     sec1_layout = [[sg.T('过滤', font=font), sg.In(js_cfg['filter'], key='filter', size=(50, 1)),
                     sg.Checkbox('打开过滤器', default=False, key='filter_en', enable_events=True, font=font),

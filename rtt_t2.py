@@ -19,6 +19,7 @@ import tkinter as tk
 from tkinter import ttk
 import config_manager
 import traceback
+from text_searcher import TextSearcher
 
 global window
 global download_window
@@ -780,7 +781,7 @@ def listen_for_arrow_keys():
         try:
             current_key = keyboard.read_key()
             current_time = time.time()
-            # print(current_key,  keyboard.is_pressed('ctrl'))
+            #print(current_key,  keyboard.is_pressed('ctrl'))
             
             if current_key == 'up':
                 if last_pressed != 'up' or (last_pressed == 'up' and (current_time - last_time) > repeat_time):
@@ -794,11 +795,22 @@ def listen_for_arrow_keys():
                     last_pressed = 'down'
                     last_time = current_time
                     print('down')
-            elif current_key == 'f' and keyboard.is_pressed('ctrl'):
+            elif current_key.lower() == 'f' and keyboard.is_pressed('ctrl'):
                 if last_pressed != 'ctrl+f':
                     window.write_event_value('CTRL_F', '')
                     last_pressed = 'ctrl+f'
                     last_time = current_time
+            elif current_key == 'enter':
+                if keyboard.is_pressed('ctrl'):
+                    if last_pressed != 'ctrl+enter':
+                        window.write_event_value('CTRL_ENTER', '')
+                        last_pressed = 'ctrl+enter'
+                        last_time = current_time
+                else:
+                    if last_pressed != 'enter':
+                        window.write_event_value('KEY_ENTER', '')
+                        last_pressed = 'enter'
+                        last_time = current_time
             else:
                 last_pressed = None
 
@@ -807,12 +819,39 @@ def listen_for_arrow_keys():
                 last_pressed = None
             elif not keyboard.is_pressed('down') and last_pressed == 'down':
                 last_pressed = None
-            elif not keyboard.is_pressed('ctrl') and last_pressed == 'ctrl+f':
+            elif not keyboard.is_pressed('ctrl') and last_pressed in ['ctrl+f', 'ctrl+enter']:
+                last_pressed = None
+            elif not keyboard.is_pressed('enter') and last_pressed in ['enter', 'ctrl+enter']:
                 last_pressed = None
 
             time.sleep(debounce_time)
         except Exception as e:
             print(f"An error occurred: {e}")
+
+
+def send_data(window, hw_obj, js_cfg, combo):
+    if hw_obj.hw_is_open():
+        input_data = window['data_input'].get()
+        js_cfg['user_input_data'] = update_user_input_list(input_data, js_cfg['user_input_data'])
+        combo['values'] = js_cfg['user_input_data']
+        combo.set(input_data)
+        config_manager.save_config(js_cfg)
+        if window['tx_data_type'].get() == 'HEX':
+            try:
+                print([int(i, 16) for i in input_data.split(' ')])
+                hw_obj.hw_write([int(i, 16) for i in input_data.split(' ')])
+            except:
+                sg.popup_no_wait('数据格式错误。数据类型请选择HEX，数据之间用空格隔开。', icon=APP_ICON)
+        else:
+            try:
+                input_data = extract_outside_brackets_corrected(input_data) + js_cfg['line_break']
+                print(input_data)
+                hw_obj.hw_write([ord(i) for i in input_data])
+            except Exception as e:
+                sg.popup_no_wait("%s" % e, icon=APP_ICON)
+    else:
+        sg.popup('请先连接硬件！', icon=APP_ICON)
+        window[DB_OUT].write('[RTT_LOG]请先连接硬件！\n')
 
 
 def get_next_item(lst, current_index, direction):
@@ -836,7 +875,10 @@ def get_next_item(lst, current_index, direction):
 
 
 # 定义搜索窗口的创建函数
-def create_find_window(font=None):
+def create_find_window(font=None, search_history=None):
+    if search_history is None:
+        search_history = []
+
     button_column = sg.Column([
         [sg.Push(), sg.Button("查找下一个", font=font, pad=(5, 5), key='find_next',
                               button_color=('grey0', 'grey100'))],
@@ -845,46 +887,11 @@ def create_find_window(font=None):
     ])
 
     find_layout = [
-        [sg.Input(key='find_key', font=font, size=(50, 1)),
+        [sg.Combo(search_history, default_value="", key='find_key', font=font, size=(50, 1), enable_events=True),
          button_column]
     ]
 
     return sg.Window("查找内容", find_layout, modal=False, font=font, finalize=True, icon=APP_ICON)
-
-
-def highlight_text(widget, keyword, tag, start='1.0', end=tk.END):
-    current = start
-    first_match = None
-    while True:
-        current = widget.search(keyword, current, stopindex=end)
-        if not current:
-            break
-        if not first_match:
-            first_match = current
-        end_match = widget.index(f"{current}+{len(keyword)}c")
-        widget.tag_add(tag, current, end_match)
-        current = end_match
-    widget.tag_config(tag, background='yellow')  # 普通高亮配置
-    return first_match
-
-
-
-def highlight_current(widget, start, end, current_tag):
-    """高亮显示当前聚焦的匹配项。"""
-    widget.tag_add(current_tag, start, end)
-    widget.tag_config(current_tag, background='dark grey')  # 当前聚焦项的高亮配置
-
-
-def find_previous(widget, keyword, start='end', end='1.0'):
-    # 逆向搜索，从结束向开始
-    current = start
-    while True:
-        current = widget.search(keyword, current, stopindex=end, backwards=True)
-        if not current:
-            break
-        start_match = widget.index(f"{current}+{len(keyword)}c")
-        return current  # 返回找到的第一个匹配项的开始位置
-    return None
 
 
 def create_custom_combo(window, key, values, default_value, size):
@@ -973,9 +980,12 @@ def main():
     # 读取json配置文件
     js_cfg = config_manager.load_config()
 
+    if 'search_history' not in js_cfg:
+        js_cfg['search_history'] = []
+
     font = js_cfg['font'][0] + ' '
     font_size = js_cfg['font_size']
-    rtt_cur_version = 'v2.5.2'
+    rtt_cur_version = 'v2.6.0'
 
     sec1_layout = [[sg.T('过滤', font=font), sg.In(js_cfg['filter'], key='filter', size=(50, 1)),
                     sg.Checkbox('打开过滤器', default=False, key='filter_en', enable_events=True, font=font),
@@ -1005,7 +1015,7 @@ def main():
 
               [sg.Frame('', tx_data_layout, key='tx_button'), sg.Multiline('', font=(font + font_size + ' bold'),
                                                                            key='data_input', size=(89, 4),
-                                                                           enable_events=False),
+                                                                           enable_events=True),
                ],
               [sg.T('历史数据'),
                 sg.Combo(js_cfg['user_input_data'], 
@@ -1013,6 +1023,7 @@ def main():
                         pad=((35, 5), (1, 1)),
                         readonly=True, key='history_data', size=(115, 1), enable_events=True)
               ]]
+    
 
     global window
     global hw_obj
@@ -1055,10 +1066,7 @@ def main():
     new_index = 0
     find_window = None
     text_widget = window[DB_OUT].Widget
-    last_search_keyword = ''
-    last_search_index = '1.0'
-    last_highlight_end = '1.0'
-    search_direction = 'next'
+
 
     # 创建自定义的Combobox和右键菜单
     combo, context_menu = create_custom_combo(window, 'history_data', js_cfg['user_input_data'],
@@ -1092,6 +1100,14 @@ def main():
             # 可以在这里添加更多的错误处理逻辑，比如显示一个错误对话框
             return None
         
+    def on_key_press(event):
+        if event.keysym == 'Return':
+            return 'break'  # 阻止默认的Enter键行为
+    input_widget = window['data_input'].Widget
+    input_widget.bind('<Key>', on_key_press)
+
+    text_searcher = TextSearcher(text_widget, APP_ICON)
+
     while True:
         win, event, values = sg.read_all_windows(timeout=150)
 
@@ -1180,28 +1196,8 @@ def main():
             window[DB_OUT].update(autoscroll=True)
         elif event == '清除窗口数据':
             window[DB_OUT].update('')
-        elif event == 'tx_data':
-            if hw_obj.hw_is_open():
-                input_data = window['data_input'].get()
-                js_cfg['user_input_data'] = update_user_input_list(input_data, js_cfg['user_input_data'])
-                combo['values'] = js_cfg['user_input_data']
-                combo.set(input_data)
-                config_manager.save_config(js_cfg)
-                if window['tx_data_type'].get() == 'HEX':
-                    try:
-                        print([int(i, 16) for i in input_data.split(' ')])
-                        hw_obj.hw_write([int(i, 16) for i in input_data.split(' ')])
-                    except:
-                        sg.popup_no_wait('数据格式错误。数据类型请选择HEX，数据之间用空格隔开。', icon=APP_ICON)
-                else:
-                    try:
-                        input_data = extract_outside_brackets_corrected(input_data) + js_cfg['line_break']
-                        print(input_data)
-                        hw_obj.hw_write([ord(i) for i in input_data])
-                    except Exception as e:
-                        sg.popup_no_wait("%s" % e, icon=APP_ICON)
-            else:
-                sg.popup('请先连接硬件', icon=APP_ICON)
+        elif event == 'tx_data' or (data_input_focus_state and event == 'KEY_ENTER'):
+            send_data(window, hw_obj, js_cfg, combo)
         elif event == 'history_data':
             window['data_input'].update(combo.get())
             print("history_data")
@@ -1262,8 +1258,14 @@ def main():
         elif event == 'CTRL_F':
             if not find_window and text_focus_state:
                 # 创建一个搜索窗体
-                find_window = create_find_window(font=font)
-                last_search_keyword = ''
+                find_window = create_find_window(font=font, search_history=js_cfg['search_history'])
+                text_searcher.reset()  # 重置搜索器状态
+                #last_search_keyword = ''
+        elif event == 'CTRL_ENTER' and data_input_focus_state:
+            multiline_widget = window['data_input'].Widget
+            multiline_widget.insert(tk.END, '\n')
+            multiline_widget.see(tk.END)
+            multiline_widget.mark_set(tk.INSERT, tk.END)
 
         if win == find_window and find_window is not None and event is None:
             # 移除全部标签
@@ -1276,65 +1278,15 @@ def main():
             if find_key == '':
                 sg.popup('请输入需要查找字符串', icon=APP_ICON)
                 continue
-            if find_key != last_search_keyword:
-                # text_widget.tag_remove('found', '1.0', tk.END)
-                # text_widget.tag_remove('current', '1.0', tk.END)
-                if highlight_text(text_widget, find_key, 'found') is None:
-                    sg.popup('没有找到目标字符串', icon=APP_ICON)
-                    continue
-                last_search_keyword = find_key
-                last_search_index = '1.0'
-                last_highlight_end = text_widget.index(tk.END)
-                last_highlight_end = text_widget.index(f"{last_highlight_end}-1c")
-                search_direction = 'next'  # 重置搜索方向
-            try:
-                if event == 'find_next':
-                    if search_direction == 'prev':  # 如果之前是向上搜索
-                        last_search_index = text_widget.index(f"{last_search_index}+{len(last_search_keyword)}c")
-                        search_direction = 'next'
-                    next_index = text_widget.search(last_search_keyword, last_search_index, stopindex=tk.END)
-                    if next_index:
-                        if text_widget.tag_ranges('current'):
-                            start_current = text_widget.index('current.first')
-                            text_widget.tag_remove('current', start_current, tk.END)
-                        end_index = text_widget.index(f"{next_index}+{len(last_search_keyword)}c")
-                        # 判断是否需要高亮新的文本
-                        print(next_index, last_highlight_end)
-                        if text_widget.compare(next_index, '>=', last_highlight_end):
-                            # 从其上一个位置开始高亮
-                            start_highlight = text_widget.index(f"{next_index}-1c")
-                            highlight_text(text_widget, last_search_keyword, 'found', start=start_highlight)
-                            last_highlight_end = text_widget.index(tk.END)
 
-                        highlight_current(text_widget, next_index, end_index, 'current')
-                        text_widget.see(next_index)
-                        last_search_index = end_index
-                    else:
-                        sg.popup_no_wait('未找到更多匹配信息!', title='警告', icon=APP_ICON, font=font, keep_on_top=True)
-                        last_search_index = '1.0'  # 重置搜索索引
-                else:
-                    if search_direction == 'next':  # 如果之前是向下搜索
-                        # 先检查 last_search_index 是否已经指向一个已找到的字符串
-                        if text_widget.tag_ranges('current'):
-                            # 将 last_search_index 移动到当前聚焦字符串的开始位置
-                            current_start = text_widget.index('current.first')
-                            # 然后向前移动一个字符
-                            last_search_index = text_widget.index(f"{current_start}-1c")
-                        search_direction = 'prev'
-                    previous_index = find_previous(text_widget, find_key, start=last_search_index)
-                    if previous_index:
-                        if text_widget.tag_ranges('current'):
-                            start_current = text_widget.index('current.first')
-                            text_widget.tag_remove('current', start_current, tk.END)
-                        end_index = text_widget.index(f"{previous_index}+{len(last_search_keyword)}c")
-                        highlight_current(text_widget, previous_index, end_index, 'current')
-                        text_widget.see(previous_index)
-                        last_search_index = previous_index
-                    else:
-                        sg.popup_no_wait('未找到更多匹配信息!', title='警告', icon=APP_ICON, font=font, keep_on_top=True)
-            except Exception as e:
-                log.info(str(e))
-                sg.popup('Error:', str(e), icon=APP_ICON, font=font)
+            if find_key not in js_cfg['search_history']:
+                js_cfg['search_history'].insert(0, find_key)
+                js_cfg['search_history'] = js_cfg['search_history'][:10]  # 只保留最近的10个搜索记录
+                find_window['find_key'].update(value=find_key, values=js_cfg['search_history'])
+                config_manager.save_config(js_cfg)
+
+            direction = 'next' if event == 'find_next' else 'prev'
+            text_searcher.search(find_key, direction)
 
         log_process(window, hw_obj, js_cfg, auto_scroll=mul_scroll)
         # time_diff.print_time_difference()

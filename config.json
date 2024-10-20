@@ -22,10 +22,13 @@
     "font_size": "12",
     "tx_line": "\n",
     "user_input_data": [
-        "1235658558asdfsd",
-        "1235658558",
+        "1235658558asdfsd\nad\n12335\n\n\n12",
+        "1235658558asdfsd\nad\n12335",
         "12356",
-        "123"
+        "1235658558",
+        "1235658558asdfsd",
+        "123",
+        "1235658558asdfsd\nad\n1233"
     ],
     "curves_name": "X&&Y&&Z",
     "y_range": [
@@ -41,13 +44,25 @@
         9600,
         19200
     ],
-    "ser_com": "COM1",
-    "ser_des": "\u901a\u4fe1\u7aef\u53e3 (COM1)",
+    "ser_com": "COM4",
+    "ser_des": "USB Serial Port (COM4)",
     "char_format": "asc",
     "update_flag": true,
-    "line_break": "\n",
+    "line_break": "",
     "rtt_block_address": [
         "",
         ""
+    ],
+    "search_history": [
+        "BDS",
+        "APPALGBDS",
+        "APPDTBDS(",
+        "APPDTBDS(0)APPALGBDS(0)Z=BDS",
+        "APPDTBDS",
+        ".bss",
+        "vPort",
+        "task",
+        "app_",
+        "cwm_algo_task"
     ]
 }
